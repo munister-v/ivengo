@@ -8,6 +8,8 @@ const TYPE_LABELS: Record<string, string> = {
   short_post: 'Короткий пост', article: 'Стаття', poll: 'Опитування',
   review: 'Огляд', faq: 'FAQ', news: 'Новина',
   responsible_gambling: 'Відповідальна гра', myth_fact: 'Міф/Факт',
+  user_story: '🧑 Історія виграшу', urgency_offer: '⏰ Терміновий офер',
+  engagement_poll: '📊 Engagement Poll',
 }
 
 const SEVERITY_CLS: Record<string, string> = {
@@ -137,6 +139,35 @@ export default function PostDetailPage() {
           />
           <p className="text-xs text-slate-400 mt-1">{content.length} символів</p>
         </div>
+
+        {post.poll && (
+          <div className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+            <p className="text-xs font-medium text-slate-500 mb-2">📊 Опитування</p>
+            <p className="text-sm font-medium text-slate-700">{post.poll.question}</p>
+            <div className="mt-2 space-y-1">
+              {post.poll.options.map((opt: string, i: number) => (
+                <div key={i} className="text-xs text-slate-500 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center">{i + 1}</span>
+                  {opt}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {post.buttons && (post.buttons as { text: string; url: string }[]).length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-slate-500 mb-2">Inline кнопки</p>
+            <div className="space-y-1">
+              {(post.buttons as { text: string; url: string }[]).map((btn, i) => (
+                <div key={i} className="bg-blue-500 text-white text-sm font-medium px-4 py-2.5 rounded-lg text-center">
+                  {btn.text}
+                  <span className="block text-xs opacity-70 truncate">{btn.url}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button
           onClick={save}

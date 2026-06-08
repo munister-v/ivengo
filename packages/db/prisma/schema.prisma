@@ -26,6 +26,9 @@ enum ContentType {
   news
   responsible_gambling
   myth_fact
+  user_story
+  urgency_offer
+  engagement_poll
 }
 
 enum Language {
@@ -45,6 +48,8 @@ model Post {
   telegramMessageId String?
   retryCount        Int         @default(0)
   imageUrl          String?
+  buttons           Json?
+  ctaUrl            String?
   sourceId          String?
   batchId           String?
 

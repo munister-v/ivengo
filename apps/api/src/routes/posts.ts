@@ -5,16 +5,22 @@ import { checkCompliance } from '@ivengo/compliance'
 import { TelegramClient } from '@ivengo/telegram'
 import { authenticate } from '../plugins/auth'
 
+const ALL_TYPES = [
+  'short_post', 'article', 'poll', 'review', 'faq', 'news',
+  'responsible_gambling', 'myth_fact', 'user_story', 'urgency_offer', 'engagement_poll',
+] as const
+
+const buttonSchema = z.object({ text: z.string(), url: z.string().url() })
+
 const createPostSchema = z.object({
   title: z.string().optional(),
   content: z.string().min(1).max(4096),
-  type: z.enum([
-    'short_post', 'article', 'poll', 'review',
-    'faq', 'news', 'responsible_gambling', 'myth_fact',
-  ]),
+  type: z.enum(ALL_TYPES),
   language: z.enum(['uk', 'ru']).default('uk'),
   scheduledAt: z.string().datetime().optional(),
   imageUrl: z.string().url().optional(),
+  ctaUrl: z.string().url().optional(),
+  buttons: z.array(buttonSchema).optional(),
 })
 
 const updatePostSchema = createPostSchema.partial().extend({
@@ -151,9 +157,16 @@ export async function postsRoutes(app: FastifyInstance) {
 
     const client = new TelegramClient({ botToken: channel.botToken, chatId: channel.chatId })
 
+    // Build inline keyboard from stored buttons
+    type RawButton = { text: string; url: string }
+    const rawButtons = post.buttons as RawButton[] | null
+    const inlineButtons = rawButtons?.length
+      ? [rawButtons.map((b) => ({ text: b.text, url: b.url }))]
+      : undefined
+
     let telegramMessageId: string | null = null
     try {
-      if (post.type === 'poll' && post.poll) {
+      if ((post.type === 'poll' || post.type === 'engagement_poll') && post.poll) {
         const pollData = post.poll
         const options = (pollData.options as string[]) ?? []
         const msg = await client.sendPoll(pollData.question, options, {
@@ -163,10 +176,13 @@ export async function postsRoutes(app: FastifyInstance) {
         })
         telegramMessageId = String(msg.message_id)
       } else if (post.imageUrl) {
-        const msg = await client.sendPhoto(post.imageUrl, { caption: post.content })
+        const msg = await client.sendPhoto(post.imageUrl, {
+          caption: post.content,
+          buttons: inlineButtons,
+        })
         telegramMessageId = String(msg.message_id)
       } else {
-        const msg = await client.sendMessage(post.content)
+        const msg = await client.sendMessage(post.content, { buttons: inlineButtons })
         telegramMessageId = String(msg.message_id)
       }
 

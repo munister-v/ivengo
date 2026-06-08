@@ -7,10 +7,18 @@ export type ContentType =
   | 'news'
   | 'responsible_gambling'
   | 'myth_fact'
+  | 'user_story'
+  | 'urgency_offer'
+  | 'engagement_poll'
 
 export type Language = 'uk' | 'ru'
 
-export type Tone = 'neutral' | 'engaging' | 'educational' | 'entertaining' | 'serious'
+export type Tone = 'neutral' | 'engaging' | 'educational' | 'entertaining' | 'serious' | 'hype'
+
+export interface InlineButton {
+  text: string
+  url: string
+}
 
 export interface GenerationRequest {
   theme: string
@@ -18,6 +26,8 @@ export interface GenerationRequest {
   language: Language
   tone: Tone
   count: number
+  ctaUrl?: string
+  channelName?: string
 }
 
 export interface GeneratedPost {
@@ -25,11 +35,14 @@ export interface GeneratedPost {
   content: string
   type: ContentType
   language: Language
+  imageUrl?: string
+  ctaUrl?: string
+  buttons?: InlineButton[]
   poll?: {
     question: string
     options: string[]
-    correctOptionId?: number
     isAnonymous?: boolean
+    allowsMultipleAnswers?: boolean
   }
 }
 

@@ -7,12 +7,14 @@ import { authenticate } from '../plugins/auth'
 const generateSchema = z.object({
   theme: z.string().min(2).max(200),
   contentType: z.enum([
-    'short_post', 'article', 'poll', 'review',
-    'faq', 'news', 'responsible_gambling', 'myth_fact',
+    'short_post', 'article', 'poll', 'review', 'faq', 'news',
+    'responsible_gambling', 'myth_fact', 'user_story', 'urgency_offer', 'engagement_poll',
   ]),
   language: z.enum(['uk', 'ru']).default('uk'),
-  tone: z.enum(['neutral', 'engaging', 'educational', 'entertaining', 'serious']).default('neutral'),
+  tone: z.enum(['neutral', 'engaging', 'educational', 'entertaining', 'serious', 'hype']).default('neutral'),
   count: z.number().int().min(1).max(10).default(3),
+  ctaUrl: z.string().url().optional(),
+  channelName: z.string().optional(),
 })
 
 export async function batchesRoutes(app: FastifyInstance) {
@@ -47,6 +49,8 @@ export async function batchesRoutes(app: FastifyInstance) {
               language: body.language,
               status: 'pending_review',
               batchId: batch.id,
+              ctaUrl: p.ctaUrl ?? body.ctaUrl,
+              buttons: p.buttons ? (p.buttons as object[]) : undefined,
             },
           })
 
@@ -57,7 +61,8 @@ export async function batchesRoutes(app: FastifyInstance) {
                 question: p.poll.question,
                 options: p.poll.options,
                 isAnonymous: p.poll.isAnonymous ?? true,
-                correctOptionId: p.poll.correctOptionId ?? null,
+                allowsMultipleAnswers: p.poll.allowsMultipleAnswers ?? false,
+                correctOptionId: (p.poll as { correctOptionId?: number }).correctOptionId ?? null,
               },
             })
           }

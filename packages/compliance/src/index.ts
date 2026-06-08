@@ -1,17 +1,22 @@
 import { runComplianceRules, hasResponsibleGamblingDisclaimer } from './rules'
 import type { ComplianceResult, ComplianceFlag } from './types'
 
-export function checkCompliance(content: string, contentType?: string): ComplianceResult {
-  const flags: ComplianceFlag[] = runComplianceRules(content)
+const DISCLAIMER_EXEMPT = new Set([
+  'responsible_gambling',
+  'engagement_poll',
+  'urgency_offer',
+  'user_story',
+])
 
-  // Responsible gambling posts are exempt from disclaimer check
-  const needsDisclaimer = contentType !== 'responsible_gambling'
-  if (needsDisclaimer && !hasResponsibleGamblingDisclaimer(content)) {
+export function checkCompliance(content: string, contentType?: string): ComplianceResult {
+  const flags: ComplianceFlag[] = runComplianceRules(content, contentType)
+
+  if (!DISCLAIMER_EXEMPT.has(contentType ?? '') && !hasResponsibleGamblingDisclaimer(content)) {
     flags.push({
       rule: 'missing_disclaimer',
       severity: 'low',
       match: '',
-      description: 'Рекомендується додати дисклеймер про відповідальну гру або 18+',
+      description: 'Рекомендується додати 18+ або посилання на відповідальну гру',
     })
   }
 

@@ -5,9 +5,12 @@ interface Rule {
   description: string
   severity: Severity
   patterns: RegExp[]
+  // Types that are exempt from this rule
+  exemptTypes?: string[]
 }
 
 const RULES: Rule[] = [
+  // ── HIGH SEVERITY (blocking) ──────────────────────────────────
   {
     id: 'guaranteed_win',
     description: 'Гарантований виграш — заборонено законодавством',
@@ -27,11 +30,10 @@ const RULES: Rule[] = [
     description: 'Хибні твердження про стабільний дохід від гри',
     severity: 'high',
     patterns: [
-      /стабільн\w* дохід від/gi,
-      /заробляй на казино/gi,
-      /заробіток в казино/gi,
+      /стабільн\w* дохід від казино/gi,
+      /заробляй на казино без/gi,
       /стабильн\w* доход от казино/gi,
-      /зарабатывай в казино/gi,
+      /заработок в казино гарантирован/gi,
     ],
   },
   {
@@ -39,60 +41,57 @@ const RULES: Rule[] = [
     description: 'Контент спрямований на неповнолітніх',
     severity: 'high',
     patterns: [
-      /для дітей/gi,
+      /для дітей до 18/gi,
       /дитяч\w+ казино/gi,
       /для несовершеннолетних/gi,
       /детск\w+ казино/gi,
     ],
   },
+
+  // ── MEDIUM SEVERITY (warning, non-blocking) ───────────────────
   {
-    id: 'aggressive_bonus',
-    description: 'Агресивна реклама бонусів без умов',
+    id: 'aggressive_bonus_no_terms',
+    description: 'Бонус без жодних умов — рекомендується додати *умови*',
     severity: 'medium',
     patterns: [
-      /безлімітн\w* бонус/gi,
-      /бонус без умов/gi,
-      /безлимитн\w* бонус/gi,
-      /бонус без условий/gi,
+      /бонус без будь-яких умов/gi,
+      /бонус без умов і обмежень/gi,
+      /бонус без условий и ограничений/gi,
     ],
   },
-  {
-    id: 'withdrawal_guarantee',
-    description: 'Гарантія легкого виведення коштів',
-    severity: 'medium',
-    patterns: [
-      /гарантован\w* вивід/gi,
-      /миттєвий вивід без/gi,
-      /гарантированн\w* вывод/gi,
-      /мгновенный вывод без/gi,
-    ],
-  },
+
+  // ── LOW SEVERITY (informational, non-blocking) ────────────────
   {
     id: 'pressure_tactics',
-    description: 'Тактики тиску та терміновості',
-    severity: 'medium',
+    description: 'Тактики терміновості — допустимо, але помірно',
+    severity: 'low',
     patterns: [
       /тільки сьогодні!/gi,
       /залишилось \d+ місць/gi,
-      /не пропусти!/gi,
+      /разбирают быстро/gi,
+      /годинник цікає/gi,
+      /час витікає/gi,
       /только сегодня!/gi,
-      /не пропусти!/gi,
     ],
+    // urgency_offer and user_story posts are expected to have this
+    exemptTypes: ['urgency_offer', 'user_story'],
   },
   {
     id: 'missing_disclaimer',
-    description: 'Відсутній дисклеймер про ризики',
+    description: 'Рекомендується додати 18+ або дисклеймер',
     severity: 'low',
     patterns: [],
-    // Checked separately via hasDisclaimer()
+    exemptTypes: ['responsible_gambling', 'engagement_poll'],
   },
 ]
 
-export function runComplianceRules(content: string): ComplianceFlag[] {
+export function runComplianceRules(content: string, contentType?: string): ComplianceFlag[] {
   const flags: ComplianceFlag[] = []
 
   for (const rule of RULES) {
     if (rule.patterns.length === 0) continue
+    if (rule.exemptTypes?.includes(contentType ?? '')) continue
+
     for (const pattern of rule.patterns) {
       const match = content.match(pattern)
       if (match) {
@@ -111,13 +110,5 @@ export function runComplianceRules(content: string): ComplianceFlag[] {
 }
 
 export function hasResponsibleGamblingDisclaimer(content: string): boolean {
-  const disclaimerPatterns = [
-    /відповідальна гра/gi,
-    /грай відповідально/gi,
-    /18\+/g,
-    /тільки для повнолітніх/gi,
-    /ответственная игра/gi,
-    /играй ответственно/gi,
-  ]
-  return disclaimerPatterns.some((p) => p.test(content))
+  return /18\+|тільки для повнолітніх|відповідальна гра|ответственная игра|тільки 18\+/i.test(content)
 }

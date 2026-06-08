@@ -99,6 +99,8 @@ export interface Post {
   publishedAt?: string
   telegramMessageId?: string
   imageUrl?: string
+  ctaUrl?: string
+  buttons?: { text: string; url: string }[]
   retryCount: number
   complianceChecks?: ComplianceCheck[]
   poll?: Poll
@@ -207,4 +209,6 @@ export interface GenerateRequest {
   language: string
   tone: string
   count: number
+  ctaUrl?: string
+  channelName?: string
 }

@@ -5,10 +5,17 @@ import { api, type Post } from '@/lib/api'
 import { StatusBadge } from '@/components/StatusBadge'
 
 const STATUSES = ['', 'draft', 'pending_review', 'approved', 'scheduled', 'published', 'failed', 'rejected']
-const TYPES = ['', 'short_post', 'article', 'poll', 'review', 'faq', 'news', 'responsible_gambling', 'myth_fact']
+const TYPES = [
+  '', 'user_story', 'urgency_offer', 'engagement_poll',
+  'short_post', 'article', 'poll', 'review', 'faq', 'news',
+  'responsible_gambling', 'myth_fact',
+]
 const LANGS = ['', 'uk', 'ru']
 
 const TYPE_LABELS: Record<string, string> = {
+  user_story: '🧑 Історія виграшу',
+  urgency_offer: '⏰ Терміновий офер',
+  engagement_poll: '📊 Engagement Poll',
   short_post: 'Короткий пост', article: 'Стаття', poll: 'Опитування',
   review: 'Огляд', faq: 'FAQ', news: 'Новина',
   responsible_gambling: 'Відповідальна гра', myth_fact: 'Міф/Факт',

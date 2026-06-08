@@ -66,9 +66,15 @@ export async function runSchedulerTick(logger: Logger): Promise<void> {
       continue
     }
 
+    type RawButton = { text: string; url: string }
+    const rawButtons = post.buttons as RawButton[] | null
+    const inlineButtons = rawButtons?.length
+      ? [rawButtons.map((b) => ({ text: b.text, url: b.url }))]
+      : undefined
+
     let telegramMessageId: string | null = null
     try {
-      if (post.type === 'poll' && post.poll) {
+      if ((post.type === 'poll' || post.type === 'engagement_poll') && post.poll) {
         const options = (post.poll.options as string[]) ?? []
         const msg = await client.sendPoll(post.poll.question, options, {
           isAnonymous: post.poll.isAnonymous,
@@ -77,10 +83,13 @@ export async function runSchedulerTick(logger: Logger): Promise<void> {
         })
         telegramMessageId = String(msg.message_id)
       } else if (post.imageUrl) {
-        const msg = await client.sendPhoto(post.imageUrl, { caption: post.content })
+        const msg = await client.sendPhoto(post.imageUrl, {
+          caption: post.content,
+          buttons: inlineButtons,
+        })
         telegramMessageId = String(msg.message_id)
       } else {
-        const msg = await client.sendMessage(post.content)
+        const msg = await client.sendMessage(post.content, { buttons: inlineButtons })
         telegramMessageId = String(msg.message_id)
       }
 
