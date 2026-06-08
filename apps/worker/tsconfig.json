@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@ivengo/db": ["../../packages/db/src/index.ts"],
+      "@ivengo/telegram": ["../../packages/telegram/src/index.ts"],
+      "@ivengo/compliance": ["../../packages/compliance/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

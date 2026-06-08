@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.local
+dist/
+.next/
+.turbo/
+*.log
+.DS_Store
+prisma/migrations/
+coverage/
+.nyc_output/

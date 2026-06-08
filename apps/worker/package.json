@@ -1,0 +1,25 @@
+{
+  "name": "@ivengo/worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node src/index.ts | pino-pretty",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ivengo/compliance": "workspace:*",
+    "@ivengo/db": "workspace:*",
+    "@ivengo/telegram": "workspace:*",
+    "node-cron": "^3.0.3",
+    "pino": "^9.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/node-cron": "^3.0.11",
+    "pino-pretty": "^11.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  }
+}

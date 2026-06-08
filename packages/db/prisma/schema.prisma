@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PostStatus {
+  draft
+  pending_review
+  approved
+  scheduled
+  published
+  failed
+  rejected
+}
+
+enum ContentType {
+  short_post
+  article
+  poll
+  review
+  faq
+  news
+  responsible_gambling
+  myth_fact
+}
+
+enum Language {
+  uk
+  ru
+}
+
+model Post {
+  id                String      @id @default(cuid())
+  title             String?
+  content           String
+  type              ContentType
+  language          Language    @default(uk)
+  status            PostStatus  @default(draft)
+  scheduledAt       DateTime?
+  publishedAt       DateTime?
+  telegramMessageId String?
+  retryCount        Int         @default(0)
+  imageUrl          String?
+  sourceId          String?
+  batchId           String?
+
+  source           Source?          @relation(fields: [sourceId], references: [id])
+  batch            ContentBatch?    @relation(fields: [batchId], references: [id])
+  poll             Poll?
+  complianceChecks ComplianceCheck[]
+  publicationLogs  PublicationLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([type])
+  @@index([language])
+}
+
+model Poll {
+  id                    String  @id @default(cuid())
+  postId                String  @unique
+  question              String
+  options               Json
+  correctOptionId       Int?
+  isAnonymous           Boolean @default(true)
+  allowsMultipleAnswers Boolean @default(false)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model ContentBatch {
+  id          String      @id @default(cuid())
+  theme       String
+  contentType ContentType
+  language    Language
+  tone        String      @default("neutral")
+  count       Int
+  status      String      @default("pending")
+
+  posts Post[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ComplianceCheck {
+  id        String   @id @default(cuid())
+  postId    String
+  passed    Boolean
+  flags     Json
+  checkedAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model PublicationLog {
+  id                String   @id @default(cuid())
+  postId            String
+  channelId         String
+  action            String
+  status            String
+  error             String?
+  telegramMessageId String?
+  createdAt         DateTime @default(now())
+
+  post    Post            @relation(fields: [postId], references: [id])
+  channel TelegramChannel @relation(fields: [channelId], references: [id])
+
+  @@index([postId])
+  @@index([channelId])
+  @@index([createdAt])
+}
+
+model TelegramChannel {
+  id          String  @id @default(cuid())
+  name        String
+  chatId      String  @unique
+  botToken    String
+  isActive    Boolean @default(true)
+  description String?
+
+  publicationLogs PublicationLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Source {
+  id       String  @id @default(cuid())
+  name     String
+  url      String?
+  type     String  @default("manual")
+  isActive Boolean @default(true)
+
+  posts Post[]
+
+  createdAt DateTime @default(now())
+}
