@@ -9,3 +9,4 @@ dist/
 prisma/migrations/
 coverage/
 .nyc_output/
+DEPLOY_STATUS.md

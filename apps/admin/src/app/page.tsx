@@ -53,7 +53,7 @@ export default function DashboardPage() {
                 <span className={`w-2 h-2 rounded-full flex-shrink-0 ${log.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
                 <div>
                   <p className="text-sm font-medium text-slate-700 truncate max-w-xs">
-                    {log.post?.title || `Post #${log.postId?.slice(0, 6)}`}
+                    {log.post?.title || `Post #${log.post?.id?.slice(0, 6)}`}
                   </p>
                   <p className="text-xs text-slate-400">{log.channel?.name} · {log.action}</p>
                 </div>

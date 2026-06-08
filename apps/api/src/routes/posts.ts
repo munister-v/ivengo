@@ -12,15 +12,25 @@ const ALL_TYPES = [
 
 const buttonSchema = z.object({ text: z.string(), url: z.string().url() })
 
+const pollSchema = z.object({
+  question: z.string().min(1),
+  options: z.array(z.string().min(1)).min(2),
+  isAnonymous: z.boolean().optional(),
+  allowsMultipleAnswers: z.boolean().optional(),
+  correctOptionId: z.number().int().optional(),
+})
+
 const createPostSchema = z.object({
   title: z.string().optional(),
   content: z.string().min(1).max(4096),
   type: z.enum(ALL_TYPES),
   language: z.enum(['uk', 'ru']).default('uk'),
+  status: z.enum(['draft', 'pending_review', 'approved', 'scheduled', 'rejected']).optional(),
   scheduledAt: z.string().datetime().optional(),
   imageUrl: z.string().url().optional(),
   ctaUrl: z.string().url().optional(),
   buttons: z.array(buttonSchema).optional(),
+  poll: pollSchema.optional(),
 })
 
 const updatePostSchema = createPostSchema.partial().extend({
@@ -74,8 +84,14 @@ export async function postsRoutes(app: FastifyInstance) {
 
   // POST /api/posts
   app.post('/', async (req, reply) => {
-    const body = createPostSchema.parse(req.body)
-    const post = await prisma.post.create({ data: body })
+    const { poll, ...body } = createPostSchema.parse(req.body)
+    const post = await prisma.post.create({
+      data: {
+        ...body,
+        ...(poll ? { poll: { create: poll } } : {}),
+      },
+      include: { poll: true },
+    })
     return reply.status(201).send(post)
   })
 

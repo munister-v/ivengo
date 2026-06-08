@@ -1,28 +1,19 @@
-FROM node:20-alpine AS base
-RUN npm install -g pnpm@9.4.0
-
-FROM base AS deps
+FROM node:20-alpine
 WORKDIR /app
-COPY package.json pnpm-workspace.yaml ./
-COPY apps/worker/package.json ./apps/worker/
-COPY packages/db/package.json ./packages/db/
-COPY packages/telegram/package.json ./packages/telegram/
-COPY packages/compliance/package.json ./packages/compliance/
-RUN pnpm install --frozen-lockfile
 
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN pnpm --filter @ivengo/db generate
-RUN pnpm --filter @ivengo/worker build
+RUN apk add --no-cache openssl
+RUN npm install -g pnpm@9.4.0 prisma@5.16.0 ts-node tsconfig-paths
 
-FROM node:20-alpine AS runner
-WORKDIR /app
+COPY package.json pnpm-workspace.yaml tsconfig.json ./
+COPY apps/worker/ ./apps/worker/
+COPY packages/db/ ./packages/db/
+COPY packages/telegram/ ./packages/telegram/
+COPY packages/compliance/ ./packages/compliance/
+RUN pnpm install --no-frozen-lockfile
+RUN prisma generate --schema=packages/db/prisma/schema.prisma
+
 ENV NODE_ENV=production
-
-COPY --from=builder /app/apps/worker/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/db/node_modules/.prisma ./node_modules/.prisma
-
-CMD ["node", "dist/index.js"]
+ENV NODE_PATH=/usr/local/lib/node_modules
+ENV TS_NODE_TRANSPILE_ONLY=true
+ENV TS_NODE_PROJECT=apps/worker/tsconfig.json
+CMD ["ts-node", "-r", "tsconfig-paths/register", "apps/worker/src/index.ts"]

@@ -2,12 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
+    "baseUrl": "../../",
     "paths": {
-      "@ivengo/db": ["../../packages/db/src/index.ts"],
-      "@ivengo/telegram": ["../../packages/telegram/src/index.ts"],
-      "@ivengo/compliance": ["../../packages/compliance/src/index.ts"],
-      "@ivengo/generator": ["../../packages/generator/src/index.ts"]
+      "@ivengo/db": ["packages/db/src/index.ts"],
+      "@ivengo/telegram": ["packages/telegram/src/index.ts"],
+      "@ivengo/compliance": ["packages/compliance/src/index.ts"],
+      "@ivengo/generator": ["packages/generator/src/index.ts"]
     }
   },
   "include": ["src/**/*"]

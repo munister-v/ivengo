@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@ivengo/db'
-import { AnthropicAdapter } from '@ivengo/generator'
+import { createAdapter } from '@ivengo/generator'
 import { authenticate } from '../plugins/auth'
 
 const generateSchema = z.object({
@@ -36,7 +36,7 @@ export async function batchesRoutes(app: FastifyInstance) {
     })
 
     try {
-      const adapter = new AnthropicAdapter()
+      const adapter = createAdapter()
       const posts = await adapter.generate(body)
 
       const created = await Promise.all(
