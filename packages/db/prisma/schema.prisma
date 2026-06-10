@@ -54,6 +54,7 @@ model Post {
   batchId           String?
   abGroupId         String?
   abVariant         String?
+  channelIds        Json?       // target TelegramChannel ids; null/empty = all active channels
 
   source           Source?          @relation(fields: [sourceId], references: [id])
   batch            ContentBatch?    @relation(fields: [batchId], references: [id])

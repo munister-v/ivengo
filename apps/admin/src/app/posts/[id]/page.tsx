@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api, type Post, type ComplianceFlag } from '@/lib/api'
 import { StatusBadge } from '@/components/StatusBadge'
+import { ChannelPicker } from '@/components/ChannelPicker'
 
 const TYPE_LABELS: Record<string, string> = {
   short_post: 'Короткий пост', article: 'Стаття', poll: 'Опитування',
@@ -24,6 +25,7 @@ export default function PostDetailPage() {
   const [post, setPost] = useState<Post | null>(null)
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
+  const [channelIds, setChannelIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [actionLoading, setActionLoading] = useState('')
@@ -37,6 +39,7 @@ export default function PostDetailPage() {
       setPost(p)
       setContent(p.content)
       setTitle(p.title ?? '')
+      setChannelIds(p.channelIds ?? [])
       setComplianceFlags(p.complianceChecks?.[0]?.flags ?? [])
     }).finally(() => setLoading(false))
   }, [id])
@@ -50,7 +53,7 @@ export default function PostDetailPage() {
     if (!post) return
     setSaving(true)
     try {
-      const updated = await api.updatePost(post.id, { content, title: title || undefined })
+      const updated = await api.updatePost(post.id, { content, title: title || undefined, channelIds })
       setPost(updated)
       notify('Збережено')
     } catch (e: unknown) {
@@ -158,6 +161,8 @@ export default function PostDetailPage() {
             </div>
           </div>
         )}
+
+        <ChannelPicker value={channelIds} onChange={setChannelIds} />
 
         <button onClick={save} disabled={saving} className="btn">{saving ? 'Збереження...' : 'Зберегти'}</button>
       </div>

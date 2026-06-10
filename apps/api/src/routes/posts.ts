@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@ivengo/db'
 import { checkCompliance } from '@ivengo/compliance'
-import { TelegramClient } from '@ivengo/telegram'
+import { publishPostToChannel } from '@ivengo/telegram'
 import { authenticate } from '../plugins/auth'
 
 const ALL_TYPES = [
@@ -33,6 +33,7 @@ const createPostSchema = z.object({
   poll: pollSchema.optional(),
   abGroupId: z.string().optional(),
   abVariant: z.string().optional(),
+  channelIds: z.array(z.string()).optional(), // target channels; empty/omitted = all active
 })
 
 const updatePostSchema = createPostSchema.partial().extend({
@@ -224,79 +225,76 @@ export async function postsRoutes(app: FastifyInstance) {
     return post
   })
 
-  // POST /api/posts/:id/publish
+  // POST /api/posts/:id/publish — publishes to the post's target channels
+  // (or all active channels when none are set). Succeeds if ≥1 channel sends.
   app.post('/:id/publish', async (req, reply) => {
     const { id } = req.params as { id: string }
     const post = await prisma.post.findUnique({ where: { id }, include: { poll: true } })
     if (!post) return reply.status(404).send({ error: 'Not found' })
 
-    const channel = await prisma.telegramChannel.findFirst({ where: { isActive: true } })
-    if (!channel) return reply.status(503).send({ error: 'No active Telegram channel configured' })
+    const active = await prisma.telegramChannel.findMany({ where: { isActive: true } })
+    if (active.length === 0) return reply.status(503).send({ error: 'No active Telegram channel configured' })
+
+    const targetIds = Array.isArray(post.channelIds) ? (post.channelIds as string[]) : []
+    const channels = targetIds.length ? active.filter((c) => targetIds.includes(c.id)) : active
+    if (channels.length === 0) return reply.status(503).send({ error: 'No active target channels for this post' })
 
     const compliance = checkCompliance(post.content, post.type)
     await prisma.complianceCheck.create({
       data: { postId: id, passed: compliance.passed, flags: compliance.flags as object[] },
     })
-
     if (!compliance.passed) {
       return reply.status(422).send({ error: 'Compliance check failed', flags: compliance.flags })
     }
 
-    const client = new TelegramClient({ botToken: channel.botToken, chatId: channel.chatId })
-
-    // Build inline keyboard from stored buttons
-    type RawButton = { text: string; url: string }
-    const rawButtons = post.buttons as RawButton[] | null
-    const inlineButtons = rawButtons?.length
-      ? [rawButtons.map((b) => ({ text: b.text, url: b.url }))]
-      : undefined
-
-    let telegramMessageId: string | null = null
-    try {
-      if ((post.type === 'poll' || post.type === 'engagement_poll') && post.poll) {
-        const pollData = post.poll
-        const options = (pollData.options as string[]) ?? []
-        const msg = await client.sendPoll(pollData.question, options, {
-          isAnonymous: pollData.isAnonymous,
-          allowsMultipleAnswers: pollData.allowsMultipleAnswers,
-          correctOptionId: pollData.correctOptionId ?? undefined,
-        })
-        telegramMessageId = String(msg.message_id)
-      } else if (post.imageUrl) {
-        const msg = await client.sendPhoto(post.imageUrl, {
-          caption: post.content,
-          buttons: inlineButtons,
-        })
-        telegramMessageId = String(msg.message_id)
-      } else {
-        const msg = await client.sendMessage(post.content, { buttons: inlineButtons })
-        telegramMessageId = String(msg.message_id)
-      }
-
-      await prisma.post.update({
-        where: { id },
-        data: { status: 'published', publishedAt: new Date(), telegramMessageId },
-      })
-
-      await prisma.publicationLog.create({
-        data: {
-          postId: id,
-          channelId: channel.id,
-          action: 'publish',
-          status: 'success',
-          telegramMessageId,
-        },
-      })
-
-      return { success: true, telegramMessageId }
-    } catch (err: unknown) {
-      const error = err instanceof Error ? err.message : String(err)
-      await prisma.post.update({ where: { id }, data: { status: 'failed' } })
-      await prisma.publicationLog.create({
-        data: { postId: id, channelId: channel.id, action: 'publish', status: 'error', error },
-      })
-      return reply.status(500).send({ error })
+    const publishable = {
+      type: post.type,
+      content: post.content,
+      imageUrl: post.imageUrl,
+      buttons: post.buttons as { text: string; url: string }[] | null,
+      poll: post.poll
+        ? {
+            question: post.poll.question,
+            options: (post.poll.options as string[]) ?? [],
+            isAnonymous: post.poll.isAnonymous,
+            allowsMultipleAnswers: post.poll.allowsMultipleAnswers,
+            correctOptionId: post.poll.correctOptionId ?? undefined,
+          }
+        : null,
     }
+
+    const results: { channel: string; ok: boolean; messageId?: string; error?: string }[] = []
+    let lastMessageId: string | null = null
+
+    for (const channel of channels) {
+      try {
+        const messageId = await publishPostToChannel({ botToken: channel.botToken, chatId: channel.chatId }, publishable)
+        lastMessageId = messageId
+        results.push({ channel: channel.name, ok: true, messageId })
+        await prisma.publicationLog.create({
+          data: { postId: id, channelId: channel.id, action: 'publish', status: 'success', telegramMessageId: messageId },
+        })
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err.message : String(err)
+        results.push({ channel: channel.name, ok: false, error })
+        await prisma.publicationLog.create({
+          data: { postId: id, channelId: channel.id, action: 'publish', status: 'error', error },
+        })
+      }
+    }
+
+    const anyOk = results.some((r) => r.ok)
+    await prisma.post.update({
+      where: { id },
+      data: anyOk
+        ? { status: 'published', publishedAt: new Date(), telegramMessageId: lastMessageId }
+        : { status: 'failed' },
+    })
+
+    if (!anyOk) {
+      return reply.status(500).send({ error: 'Усі канали з помилкою', results })
+    }
+    return { success: true, telegramMessageId: lastMessageId, results }
   })
 
   // POST /api/posts/:id/compliance

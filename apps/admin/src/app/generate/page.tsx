@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { api, type Post } from '@/lib/api'
+import { ChannelPicker } from '@/components/ChannelPicker'
 
 const TYPES = [
   { value: 'user_story',      label: '🧑 Історія виграшу (User Story)', badge: 'Хіт' },
@@ -44,6 +45,7 @@ export default function GeneratePage() {
     ctaUrl: '',
     channelName: 'Гральний Клуб',
   })
+  const [channelIds, setChannelIds] = useState<string[]>([])
   const [autoSchedule, setAutoSchedule] = useState(false)
   const [startAt, setStartAt] = useState('')
   const [intervalHours, setIntervalHours] = useState(4)
@@ -65,6 +67,7 @@ export default function GeneratePage() {
         ...form,
         ctaUrl: form.ctaUrl || undefined,
         channelName: form.channelName || undefined,
+        channelIds: channelIds.length ? channelIds : undefined,
         autoSchedule: autoSchedule && startAt
           ? { startAt: new Date(startAt).toISOString(), intervalHours }
           : undefined,
@@ -139,6 +142,8 @@ export default function GeneratePage() {
             <input type="number" min={1} max={10} value={form.count} onChange={(e) => set('count', Number(e.target.value))} className="fld" />
           </div>
         </div>
+
+        <ChannelPicker value={channelIds} onChange={setChannelIds} label="Пабліки для цієї генерації" />
 
         {/* Авто-розклад */}
         <div className="bg-white/5 p-4 space-y-3">

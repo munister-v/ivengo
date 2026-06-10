@@ -2,6 +2,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { api, type Post, type MediaAsset } from '@/lib/api'
+import { ChannelPicker } from '@/components/ChannelPicker'
 import { TEMPLATES, TEMPLATE_GROUPS } from './templates'
 
 const TYPES = [
@@ -42,6 +43,7 @@ function ConstructorForm() {
   const [pollOptions, setPollOptions] = useState(['', ''])
   const [pollAnonymous, setPollAnonymous] = useState(true)
   const [scheduledAt, setScheduledAt] = useState('')
+  const [channelIds, setChannelIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
   const [showMediaPicker, setShowMediaPicker] = useState(false)
@@ -68,6 +70,7 @@ function ConstructorForm() {
     setLanguage(p.language)
     setImageUrl(p.imageUrl ?? '')
     setCtaUrl(p.ctaUrl ?? '')
+    setChannelIds(p.channelIds ?? [])
     setButtons(p.buttons ? p.buttons.map((b) => ({ ...b })) : [])
     if (p.poll) {
       setPollQuestion(p.poll.question)
@@ -153,6 +156,7 @@ function ConstructorForm() {
         buttons: validButtons.length ? validButtons : undefined,
         abVariant: abVariant || undefined,
         abGroupId: abVariant ? (abGroupId || undefined) : undefined,
+        channelIds: channelIds.length ? channelIds : undefined,
       }
       if (isPollType) {
         payload.poll = {
@@ -352,6 +356,8 @@ function ConstructorForm() {
             </label>
           </div>
         )}
+
+        <ChannelPicker value={channelIds} onChange={setChannelIds} />
 
         <div>
           <label className="lbl">Запланувати на (необов&apos;язково)</label>

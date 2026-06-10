@@ -132,6 +132,7 @@ export interface Post {
   buttons?: { text: string; url: string }[]
   abGroupId?: string
   abVariant?: string
+  channelIds?: string[]
   retryCount: number
   complianceChecks?: ComplianceCheck[]
   poll?: Poll
@@ -242,6 +243,7 @@ export interface GenerateRequest {
   count: number
   ctaUrl?: string
   channelName?: string
+  channelIds?: string[]
   autoSchedule?: { startAt: string; intervalHours: number }
 }
 

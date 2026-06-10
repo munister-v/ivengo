@@ -15,6 +15,7 @@ const generateSchema = z.object({
   count: z.number().int().min(1).max(10).default(3),
   ctaUrl: z.string().url().optional(),
   channelName: z.string().optional(),
+  channelIds: z.array(z.string()).optional(), // target channels for every post in the batch
   autoSchedule: z.object({
     startAt: z.string().datetime(),
     intervalHours: z.number().min(0.25).max(168).default(4),
@@ -63,6 +64,7 @@ export async function batchesRoutes(app: FastifyInstance) {
               batchId: batch.id,
               ctaUrl: p.ctaUrl ?? body.ctaUrl,
               buttons: p.buttons ? (p.buttons as object[]) : undefined,
+              channelIds: body.channelIds?.length ? body.channelIds : undefined,
             },
           })
 
