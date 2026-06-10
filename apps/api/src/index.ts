@@ -8,6 +8,9 @@ import { batchesRoutes } from './routes/batches'
 import { channelsRoutes } from './routes/channels'
 import { logsRoutes } from './routes/logs'
 import { statsRoutes } from './routes/stats'
+import { monitoringRoutes } from './routes/monitoring'
+import { analyticsRoutes } from './routes/analytics'
+import { mediaRoutes } from './routes/media'
 
 const app = Fastify({
   logger: {
@@ -44,6 +47,9 @@ async function bootstrap() {
   await app.register(channelsRoutes, { prefix: '/api/channels' })
   await app.register(logsRoutes, { prefix: '/api/logs' })
   await app.register(statsRoutes, { prefix: '/api/stats' })
+  await app.register(monitoringRoutes, { prefix: '/api/monitoring' })
+  await app.register(analyticsRoutes, { prefix: '/api/analytics' })
+  await app.register(mediaRoutes, { prefix: '/api/media' })
 
   app.setErrorHandler((err, req, reply) => {
     app.log.error({ err, url: req.url }, 'Request error')

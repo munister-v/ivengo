@@ -6,7 +6,7 @@ export interface PostTemplate {
   title: string
   content: string
   buttons?: { text: string; url: string }[]
-  poll?: { question: string; options: string[]; isAnonymous?: boolean }
+  poll?: { question: string; options: string[]; isAnonymous?: boolean; correctOptionId?: number }
 }
 
 const CTA = 'https://betcity.ua'

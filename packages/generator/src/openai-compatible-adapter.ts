@@ -6,25 +6,31 @@ import { buildPrompt } from './prompts'
  * OpenRouter (https://openrouter.ai/api/v1), Ollama (http://localhost:11434/v1),
  * LM Studio, vLLM, etc.
  *
- * `models` is tried in order — on a 429 (rate limit) from one model/provider,
- * the adapter falls through to the next. Useful for OpenRouter ":free" models,
- * which share a rate-limited pool and frequently return 429.
+ * `models` is tried in order, and for each model every key in `apiKeys` is tried —
+ * on a 401/429/503 (auth/rate-limit) the adapter falls through to the next
+ * key, then the next model. Useful for OpenRouter ":free" models, which share
+ * a rate-limited pool and frequently return 429, and for spreading load across
+ * multiple OpenRouter accounts/keys.
  */
 export class OpenAICompatibleAdapter {
+  private apiKeys: (string | undefined)[]
+
   constructor(
     private baseUrl: string,
-    private apiKey: string | undefined,
+    apiKeys: string | string[] | undefined,
     private models: string[]
   ) {
     if (models.length === 0) throw new Error('OpenAICompatibleAdapter requires at least one model')
+    this.apiKeys = Array.isArray(apiKeys) ? apiKeys : [apiKeys]
+    if (this.apiKeys.length === 0) this.apiKeys = [undefined]
   }
 
-  private async callModel(model: string, system: string, user: string): Promise<string> {
+  private async callModel(model: string, apiKey: string | undefined, system: string, user: string): Promise<string> {
     const res = await fetch(`${this.baseUrl.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
       },
       body: JSON.stringify({
         model,
@@ -52,16 +58,19 @@ export class OpenAICompatibleAdapter {
 
     let raw = ''
     let lastErr: unknown
-    for (const model of this.models) {
-      try {
-        raw = await this.callModel(model, system, user)
-        lastErr = undefined
-        break
-      } catch (e) {
-        lastErr = e
-        const status = (e as { status?: number }).status
-        if (status === 429 || status === 503) continue // try next model in the fallback list
-        throw e
+    outer: for (const model of this.models) {
+      for (const apiKey of this.apiKeys) {
+        try {
+          raw = await this.callModel(model, apiKey, system, user)
+          lastErr = undefined
+          break outer
+        } catch (e) {
+          lastErr = e
+          const status = (e as { status?: number }).status
+          // 401/403: bad/exhausted key — try next key. 429/503: rate-limited — try next key, then next model.
+          if (status === 401 || status === 403 || status === 429 || status === 503) continue
+          throw e
+        }
       }
     }
     if (lastErr) throw lastErr

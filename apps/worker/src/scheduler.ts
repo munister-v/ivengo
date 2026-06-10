@@ -5,6 +5,35 @@ import type { Logger } from 'pino'
 
 const MAX_RETRY = Number(process.env.MAX_RETRY_COUNT) || 3
 
+interface NotifyEvent {
+  kind: 'success' | 'error' | 'rejected'
+  postId: string
+  title: string
+  detail?: string
+}
+
+async function notifyAdmin(events: NotifyEvent[], logger: Logger): Promise<void> {
+  const token = process.env.ADMIN_NOTIFY_BOT_TOKEN
+  const chatId = process.env.ADMIN_NOTIFY_CHAT_ID
+  if (!token || !chatId || events.length === 0) return
+
+  const lines = events.map((e) => {
+    const icon = e.kind === 'success' ? '✅' : e.kind === 'rejected' ? '🚫' : '⚠️'
+    let line = `${icon} ${e.title}`
+    if (e.detail) line += `\n   ${e.detail}`
+    return line
+  })
+
+  const text = `🤖 *Ivengo: оновлення публікацій*\n\n${lines.join('\n')}`
+
+  try {
+    const client = new TelegramClient({ botToken: token, chatId })
+    await client.sendMessage(text)
+  } catch (err) {
+    logger.error({ err }, 'Failed to send admin notification')
+  }
+}
+
 export async function runSchedulerTick(logger: Logger): Promise<void> {
   const now = new Date()
 
@@ -41,9 +70,11 @@ export async function runSchedulerTick(logger: Logger): Promise<void> {
   }
 
   const client = new TelegramClient({ botToken: channel.botToken, chatId: channel.chatId })
+  const notifyEvents: NotifyEvent[] = []
 
   for (const post of allPosts) {
     logger.info({ postId: post.id, status: post.status }, 'Processing post')
+    const postLabel = post.title || `${post.type} (${post.id.slice(0, 8)})`
 
     // Compliance re-check before publishing
     const compliance = checkCompliance(post.content, post.type)
@@ -62,6 +93,12 @@ export async function runSchedulerTick(logger: Logger): Promise<void> {
           status: 'error',
           error: `Compliance: ${compliance.flags.map((f) => f.rule).join(', ')}`,
         },
+      })
+      notifyEvents.push({
+        kind: 'rejected',
+        postId: post.id,
+        title: postLabel,
+        detail: `Compliance: ${compliance.flags.map((f) => f.rule).join(', ')}`,
       })
       continue
     }
@@ -109,6 +146,7 @@ export async function runSchedulerTick(logger: Logger): Promise<void> {
       })
 
       logger.info({ postId: post.id, telegramMessageId }, 'Post published successfully')
+      notifyEvents.push({ kind: 'success', postId: post.id, title: postLabel, detail: `Канал: ${channel.name}` })
     } catch (err: unknown) {
       const error = err instanceof Error ? err.message : String(err)
       logger.error({ postId: post.id, error }, 'Failed to publish post')
@@ -127,6 +165,14 @@ export async function runSchedulerTick(logger: Logger): Promise<void> {
           error,
         },
       })
+      notifyEvents.push({
+        kind: 'error',
+        postId: post.id,
+        title: postLabel,
+        detail: `Спроба ${post.retryCount + 1}/${MAX_RETRY}: ${error}`,
+      })
     }
   }
+
+  await notifyAdmin(notifyEvents, logger)
 }

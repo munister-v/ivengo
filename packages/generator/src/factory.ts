@@ -19,6 +19,12 @@ function parseModelList(envValue: string | undefined, fallback: string[]): strin
   return envValue.split(',').map((m) => m.trim()).filter(Boolean)
 }
 
+function parseKeyList(envValue: string | undefined): string[] | undefined {
+  if (!envValue) return undefined
+  const keys = envValue.split(',').map((k) => k.trim()).filter(Boolean)
+  return keys.length ? keys : undefined
+}
+
 /**
  * Picks the AI provider from env vars — switch without code changes:
  *
@@ -31,6 +37,10 @@ function parseModelList(envValue: string | undefined, fallback: string[]): strin
  * OpenRouter's ":free" models, which share a rate-limited pool across all
  * users and frequently return 429 — listing several spreads the load.
  * If unset for openrouter, a curated list of current free models is used.
+ *
+ * OPENROUTER_API_KEY also accepts a comma-separated list of keys (e.g. from
+ * multiple OpenRouter accounts) — the adapter rotates through them on
+ * 401/403/429/503 before moving on to the next model.
  */
 export function createAdapter(): ContentAdapter {
   const provider = (process.env.AI_PROVIDER ?? 'anthropic').toLowerCase()
@@ -39,7 +49,7 @@ export function createAdapter(): ContentAdapter {
     case 'openrouter':
       return new OpenAICompatibleAdapter(
         process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
-        process.env.OPENROUTER_API_KEY,
+        parseKeyList(process.env.OPENROUTER_API_KEY),
         parseModelList(process.env.AI_MODEL, FREE_OPENROUTER_FALLBACKS)
       )
 

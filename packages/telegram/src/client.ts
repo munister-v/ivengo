@@ -92,4 +92,14 @@ export class TelegramClient {
       message_id: messageId,
     })
   }
+
+  /** Lightweight connectivity check — calls Telegram's getMe (no chat_id needed). */
+  async getMe(): Promise<{ id: number; username?: string; first_name: string }> {
+    const res = await fetch(`${this.baseUrl}/getMe`)
+    const data = (await res.json()) as TelegramResponse<{ id: number; username?: string; first_name: string }>
+    if (!data.ok) {
+      throw new Error(`Telegram API error [${data.error_code}]: ${data.description}`)
+    }
+    return data.result as { id: number; username?: string; first_name: string }
+  }
 }

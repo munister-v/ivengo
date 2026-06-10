@@ -1,9 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+import { getToken, removeToken, loginPath } from './auth'
 
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('ivengo_token')
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
@@ -15,6 +12,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       ...options.headers,
     },
   })
+
+  // Token expired or invalid → clear it and send the user to login once,
+  // instead of leaving the app stuck behind a dead token. The login request
+  // itself is exempt (a wrong password there is a normal 401).
+  if (res.status === 401 && !path.includes('/auth/login')) {
+    removeToken()
+    if (typeof window !== 'undefined') {
+      window.location.href = loginPath()
+    }
+    throw new Error('Сесія завершилась — увійдіть знову')
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
@@ -43,6 +51,9 @@ export const api = {
     return request<PostsResponse>(`/api/posts?${qs}`)
   },
   getPost: (id: string) => request<Post>(`/api/posts/${id}`),
+  getCalendar: (from: string, to: string) =>
+    request<{ posts: CalendarPost[] }>(`/api/posts/calendar?from=${from}&to=${to}`),
+  getAbGroups: () => request<{ groups: AbGroup[] }>('/api/posts/ab-groups'),
   createPost: (data: Partial<Post>) =>
     request<Post>('/api/posts', { method: 'POST', body: JSON.stringify(data) }),
   updatePost: (id: string, data: Partial<Post>) =>
@@ -76,6 +87,10 @@ export const api = {
   getChannels: () => request<Channel[]>('/api/channels'),
   createChannel: (data: Partial<Channel>) =>
     request<Channel>('/api/channels', { method: 'POST', body: JSON.stringify(data) }),
+  updateChannel: (id: string, data: Partial<Channel>) =>
+    request<Channel>(`/api/channels/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteChannel: (id: string) =>
+    request<void>(`/api/channels/${id}`, { method: 'DELETE' }),
   testChannel: (id: string) =>
     request<{ success: boolean }>(`/api/channels/${id}/test`, { method: 'POST' }),
 
@@ -85,6 +100,20 @@ export const api = {
     Object.entries(params).forEach(([k, v]) => v && qs.set(k, String(v)))
     return request<LogsResponse>(`/api/logs?${qs}`)
   },
+
+  // Monitoring
+  getHealth: () => request<HealthResponse>('/api/monitoring/health'),
+  getQueue: () => request<QueueResponse>('/api/monitoring/queue'),
+  getMonitoringErrors: () => request<{ errors: PublicationLog[] }>('/api/monitoring/errors'),
+
+  // Analytics
+  getAnalyticsOverview: () => request<AnalyticsOverview>('/api/analytics/overview'),
+
+  // Media
+  getMedia: () => request<MediaAsset[]>('/api/media'),
+  createMedia: (data: { url: string; name?: string; tags?: string }) =>
+    request<MediaAsset>('/api/media', { method: 'POST', body: JSON.stringify(data) }),
+  deleteMedia: (id: string) => request<void>(`/api/media/${id}`, { method: 'DELETE' }),
 }
 
 // Types
@@ -101,6 +130,8 @@ export interface Post {
   imageUrl?: string
   ctaUrl?: string
   buttons?: { text: string; url: string }[]
+  abGroupId?: string
+  abVariant?: string
   retryCount: number
   complianceChecks?: ComplianceCheck[]
   poll?: Poll
@@ -211,4 +242,71 @@ export interface GenerateRequest {
   count: number
   ctaUrl?: string
   channelName?: string
+  autoSchedule?: { startAt: string; intervalHours: number }
+}
+
+export interface HealthCheck {
+  name: string
+  ok: boolean
+  detail?: string
+  latencyMs?: number
+}
+
+export interface HealthResponse {
+  ok: boolean
+  checks: HealthCheck[]
+  ts: string
+}
+
+export interface AbGroupVariant {
+  id: string
+  title?: string
+  type: string
+  status: string
+  abVariant?: string
+  scheduledAt?: string
+  publishedAt?: string
+  publishCount: number
+}
+
+export interface AbGroup {
+  abGroupId: string
+  variants: AbGroupVariant[]
+}
+
+export interface CalendarPost {
+  id: string
+  title?: string
+  type: string
+  status: string
+  language: string
+  scheduledAt?: string
+  publishedAt?: string
+}
+
+export interface AnalyticsOverview {
+  perDay: { date: string; count: number }[]
+  byType: Record<string, number>
+  byLanguage: Record<string, number>
+  byStatus: Record<string, number>
+  successRate: { success: number; error: number; total: number }
+  channelStats: Record<string, { success: number; error: number }>
+  windowDays: number
+}
+
+export interface MediaAsset {
+  id: string
+  url: string
+  name?: string
+  tags?: string
+  createdAt: string
+}
+
+export interface QueueResponse {
+  scheduled: number
+  pendingReview: number
+  failed: number
+  processingBatches: number
+  overdue: number
+  nextScheduled?: { id: string; title?: string; scheduledAt: string; type: string } | null
 }

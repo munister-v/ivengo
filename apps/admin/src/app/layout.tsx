@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { Sidebar } from '@/components/Sidebar'
+import { LayoutWrapper } from '@/components/LayoutWrapper'
 
 export const metadata: Metadata = {
   title: 'Ivengo Admin',
@@ -10,11 +10,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uk">
-      <body className="bg-slate-50 text-slate-900">
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 p-8 overflow-auto">{children}</main>
-        </div>
+      <body className="bg-tile-amber text-tile-coal">
+        <LayoutWrapper>{children}</LayoutWrapper>
       </body>
     </html>
   )

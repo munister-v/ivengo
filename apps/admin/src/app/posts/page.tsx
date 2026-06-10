@@ -46,42 +46,46 @@ export default function PostsPage() {
   const totalPages = Math.ceil(total / 20)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Пости <span className="text-slate-400 font-normal text-lg">({total})</span></h1>
-        <Link href="/posts/new" className="bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-          + Новий пост
-        </Link>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="page-title">Пости <span className="text-tile-coal/40 font-normal text-lg">({total})</span></h1>
+        <Link href="/posts/new" className="btn-coal">+ Новий пост</Link>
       </div>
 
-      <div className="flex gap-3 flex-wrap">
+      {/* Filters — coal bar */}
+      <div className="panel-pad flex gap-3 flex-wrap">
         <Select value={status} onChange={(v) => { setStatus(v); setPage(1) }} options={STATUSES} placeholder="Статус" />
         <Select value={type} onChange={(v) => { setType(v); setPage(1) }} options={TYPES} placeholder="Тип" labelMap={TYPE_LABELS} />
         <Select value={language} onChange={(v) => { setLanguage(v); setPage(1) }} options={LANGS} placeholder="Мова" labelMap={{ uk: '🇺🇦 UA', ru: '🇷🇺 RU' }} />
       </div>
 
       {loading ? (
-        <div className="text-slate-400">Завантаження...</div>
+        <div className="eyebrow animate-pulse">Завантаження…</div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
-          {posts.length === 0 && <p className="p-6 text-slate-400 text-sm text-center">Нічого не знайдено</p>}
+        <div className="panel divide-y divide-white/10">
+          {posts.length === 0 && <p className="p-6 text-white/40 text-sm text-center">Нічого не знайдено</p>}
           {posts.map((post) => (
-            <div key={post.id} className="p-4 flex items-start gap-4 hover:bg-slate-50 transition-colors">
+            <div key={post.id} className="p-4 flex items-start gap-4 hover:bg-white/5 transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <StatusBadge status={post.status} />
-                  <span className="text-xs text-slate-400">{TYPE_LABELS[post.type] ?? post.type}</span>
-                  <span className="text-xs text-slate-400">{post.language === 'uk' ? '🇺🇦' : '🇷🇺'}</span>
+                  <span className="text-xs text-white/40">{TYPE_LABELS[post.type] ?? post.type}</span>
+                  <span className="text-xs text-white/40">{post.language === 'uk' ? '🇺🇦' : '🇷🇺'}</span>
                 </div>
-                <p className="text-sm font-medium text-slate-800 truncate">{post.title || post.content.slice(0, 80)}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{new Date(post.createdAt).toLocaleString('uk-UA')}</p>
+                <p className="text-sm font-medium text-white truncate">{post.title || post.content.slice(0, 80)}</p>
+                <p className="text-xs text-white/40 mt-0.5 font-mono">{new Date(post.createdAt).toLocaleString('uk-UA')}</p>
               </div>
-              <Link
-                href={`/posts/${post.id}`}
-                className="flex-shrink-0 text-sm text-sky-600 hover:text-sky-700 font-medium"
-              >
-                Відкрити →
-              </Link>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <Link href={`/posts/${post.id}`} className="text-sm text-tile-pink hover:text-tile-teal font-medium">
+                  Відкрити →
+                </Link>
+                <Link href={`/constructor?from=${post.id}`} className="text-xs text-white/40 hover:text-white">
+                  🔁 Дублювати як шаблон
+                </Link>
+                <Link href={`/constructor?from=${post.id}&abGroupId=${post.abGroupId ?? post.id}&abVariant=B`} className="text-xs text-white/40 hover:text-white">
+                  🧪 Створити варіант B
+                </Link>
+              </div>
             </div>
           ))}
         </div>
@@ -89,11 +93,9 @@ export default function PostsPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center gap-2">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-100">← Назад</button>
-          <span className="text-sm text-slate-500">{page} / {totalPages}</span>
-          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-100">Далі →</button>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="btn-coal disabled:opacity-40">← Назад</button>
+          <span className="text-sm text-tile-coal/60 font-mono">{page} / {totalPages}</span>
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-coal disabled:opacity-40">Далі →</button>
         </div>
       )}
     </div>
@@ -104,11 +106,7 @@ function Select({ value, onChange, options, placeholder, labelMap = {} }: {
   value: string; onChange: (v: string) => void; options: string[]; placeholder: string; labelMap?: Record<string, string>
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
-    >
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="fld w-auto">
       <option value="">{placeholder}</option>
       {options.filter(Boolean).map((o) => (
         <option key={o} value={o}>{labelMap[o] ?? o}</option>

@@ -1,8 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { api, type StatsData } from '@/lib/api'
-import { StatusBadge } from '@/components/StatusBadge'
 
+const STATUS_META: Record<string, { label: string; bg: string; text: string }> = {
+  draft:          { label: 'Чернетки',     bg: 'bg-tile-amber',  text: 'text-tile-coal' },
+  pending_review: { label: 'На ревʼю',     bg: 'bg-tile-pink',   text: 'text-tile-coal' },
+  approved:       { label: 'Схвалено',     bg: 'bg-tile-teal',   text: 'text-tile-coal' },
+  scheduled:      { label: 'Заплановано',  bg: 'bg-tile-blue',   text: 'text-white' },
+  published:      { label: 'Опубліковано', bg: 'bg-tile-coal',   text: 'text-white' },
+  failed:         { label: 'Помилка',      bg: 'bg-tile-rose',   text: 'text-white' },
+  rejected:       { label: 'Відхилено',    bg: 'bg-tile-amber',  text: 'text-tile-coal/60' },
+}
 const STATUS_ORDER = ['draft', 'pending_review', 'approved', 'scheduled', 'published', 'failed', 'rejected']
 
 export default function DashboardPage() {
@@ -17,73 +26,81 @@ export default function DashboardPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="text-slate-400">Завантаження...</div>
-  if (error) return <div className="text-red-500">Помилка: {error}</div>
+  if (loading) return <div className="eyebrow animate-pulse">Завантаження…</div>
+  if (error) return <div className="panel-pad bg-tile-rose">⚠️ Помилка: {error}</div>
   if (!stats) return null
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+    <div className="space-y-3">
+      <h1 className="page-title">Dashboard</h1>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Всього постів" value={stats.totalPosts} icon="📝" />
-        <StatCard label="На ревʼю" value={stats.byStatus.pending_review ?? 0} icon="🔍" />
-        <StatCard label="Опубліковано сьогодні" value={stats.publishedToday} icon="✅" color="green" />
-        <StatCard label="Помилки сьогодні" value={stats.failedToday} icon="⚠️" color="red" />
+      {/* ── Mondrian hero grid ───────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-0 lg:[&>*]:border lg:[&>*]:border-tile-amber">
+        <HeroTile label="Всього постів" value={stats.totalPosts} bg="bg-tile-blue" text="text-white" big />
+        <HeroTile label="На ревʼю" value={stats.byStatus.pending_review ?? 0} bg="bg-tile-pink" text="text-tile-coal" />
+        <HeroTile label="Опубліковано сьогодні" value={stats.publishedToday} bg="bg-tile-teal" text="text-tile-coal" />
+        <HeroTile
+          label="Помилки сьогодні"
+          value={stats.failedToday}
+          bg={stats.failedToday > 0 ? 'bg-tile-rose' : 'bg-tile-coal'}
+          text="text-white"
+        />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {STATUS_ORDER.map((status) => (
-          <div key={status} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-            <StatusBadge status={status} />
-            <span className="text-xl font-bold text-slate-700">{stats.byStatus[status] ?? 0}</span>
-          </div>
-        ))}
+      {/* ── Status breakdown tiles ───────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 lg:gap-0 lg:[&>*]:border lg:[&>*]:border-tile-amber">
+        {STATUS_ORDER.map((status) => {
+          const meta = STATUS_META[status]
+          return (
+            <Link
+              key={status}
+              href={`/posts?status=${status}`}
+              className={`p-4 flex flex-col justify-between min-h-[110px] transition-opacity hover:opacity-90 ${meta.bg} ${meta.text}`}
+            >
+              <span className="text-4xl font-bold leading-none">{stats.byStatus[status] ?? 0}</span>
+              <span className="text-[10px] font-mono uppercase tracking-widest opacity-70 mt-2">{meta.label}</span>
+            </Link>
+          )
+        })}
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold text-slate-700 mb-3">Остання активність</h2>
-        <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
-          {stats.recentActivity.length === 0 && (
-            <p className="p-4 text-slate-400 text-sm">Немає активності</p>
-          )}
-          {stats.recentActivity.map((log) => (
-            <div key={log.id} className="p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${log.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
-                <div>
-                  <p className="text-sm font-medium text-slate-700 truncate max-w-xs">
-                    {log.post?.title || `Post #${log.post?.id?.slice(0, 6)}`}
-                  </p>
-                  <p className="text-xs text-slate-400">{log.channel?.name} · {log.action}</p>
+      {/* ── Recent activity — coal tile ──────────────────────── */}
+      <div className="panel-pad">
+        <div className="panel-label mb-3">Остання активність</div>
+        {stats.recentActivity.length === 0 ? (
+          <p className="text-sm text-white/40 py-4 text-center">Немає активності</p>
+        ) : (
+          <div className="divide-y divide-white/10">
+            {stats.recentActivity.map((log) => (
+              <div key={log.id} className="py-3 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${log.status === 'success' ? 'bg-tile-teal' : 'bg-tile-rose'}`} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {log.post?.title || `Post #${log.post?.id?.slice(0, 6)}`}
+                    </p>
+                    <p className="text-xs text-white/40">{log.channel?.name} · {log.action}</p>
+                  </div>
                 </div>
+                <time className="text-xs text-white/40 whitespace-nowrap flex-shrink-0 font-mono">
+                  {new Date(log.createdAt).toLocaleString('uk-UA')}
+                </time>
               </div>
-              <time className="text-xs text-slate-400 whitespace-nowrap">
-                {new Date(log.createdAt).toLocaleString('uk-UA')}
-              </time>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function StatCard({ label, value, icon, color = 'blue' }: {
-  label: string; value: number; icon: string; color?: 'blue' | 'green' | 'red'
+function HeroTile({ label, value, bg, text, big }: {
+  label: string; value: number; bg: string; text: string; big?: boolean
 }) {
-  const colors = {
-    blue: 'bg-sky-50 text-sky-700',
-    green: 'bg-green-50 text-green-700',
-    red: 'bg-red-50 text-red-700',
-  }
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg text-xl mb-3 ${colors[color]}`}>
-        {icon}
-      </div>
-      <p className="text-2xl font-bold text-slate-800">{value}</p>
-      <p className="text-sm text-slate-500 mt-0.5">{label}</p>
+    <div className={`p-6 flex flex-col justify-between min-h-[150px] ${bg} ${text}`}>
+      <span className="text-xs font-mono uppercase tracking-widest opacity-60">{label}</span>
+      <span className={`font-bold leading-none ${big ? 'text-6xl' : 'text-5xl'}`}>{value}</span>
     </div>
   )
 }

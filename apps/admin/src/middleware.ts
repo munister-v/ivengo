@@ -7,7 +7,14 @@ export function middleware(request: NextRequest) {
 
   const token = request.cookies.get('ivengo_token')?.value
   if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    // Clone nextUrl (which is already basePath-aware) and only set the
+    // pathname. Next.js re-applies basePath on redirect automatically, so we
+    // must NOT prepend it ourselves — doing both produced /ivengo/ivengo/login
+    // and bounced the user straight back to the login screen.
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.search = ''
+    return NextResponse.redirect(loginUrl)
   }
   return NextResponse.next()
 }

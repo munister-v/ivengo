@@ -31,6 +31,8 @@ const createPostSchema = z.object({
   ctaUrl: z.string().url().optional(),
   buttons: z.array(buttonSchema).optional(),
   poll: pollSchema.optional(),
+  abGroupId: z.string().optional(),
+  abVariant: z.string().optional(),
 })
 
 const updatePostSchema = createPostSchema.partial().extend({
@@ -65,6 +67,67 @@ export async function postsRoutes(app: FastifyInstance) {
     return { posts, total, page: Number(page), limit: Number(limit) }
   })
 
+  // GET /api/posts/calendar?from=ISO&to=ISO — posts scheduled or published in a date range
+  app.get('/calendar', async (req) => {
+    const { from, to } = req.query as Record<string, string>
+    const range = from && to ? { gte: new Date(from), lte: new Date(to) } : undefined
+
+    const posts = await prisma.post.findMany({
+      where: {
+        OR: [
+          ...(range ? [{ scheduledAt: range }, { publishedAt: range }] : []),
+        ],
+      },
+      orderBy: [{ scheduledAt: 'asc' }, { publishedAt: 'asc' }],
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        status: true,
+        language: true,
+        scheduledAt: true,
+        publishedAt: true,
+      },
+      take: 500,
+    })
+
+    return { posts }
+  })
+
+  // GET /api/posts/ab-groups — A/B test groups with both variants and their stats
+  app.get('/ab-groups', async () => {
+    const posts = await prisma.post.findMany({
+      where: { abGroupId: { not: null } },
+      orderBy: [{ abGroupId: 'asc' }, { abVariant: 'asc' }],
+      include: {
+        publicationLogs: { where: { status: 'success' }, select: { id: true } },
+      },
+    })
+
+    const groups = new Map<string, typeof posts>()
+    for (const p of posts) {
+      const key = p.abGroupId as string
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(p)
+    }
+
+    return {
+      groups: Array.from(groups.entries()).map(([abGroupId, items]) => ({
+        abGroupId,
+        variants: items.map((p) => ({
+          id: p.id,
+          title: p.title,
+          type: p.type,
+          status: p.status,
+          abVariant: p.abVariant,
+          scheduledAt: p.scheduledAt,
+          publishedAt: p.publishedAt,
+          publishCount: p.publicationLogs.length,
+        })),
+      })),
+    }
+  })
+
   // GET /api/posts/:id
   app.get('/:id', async (req, reply) => {
     const { id } = req.params as { id: string }
@@ -85,13 +148,21 @@ export async function postsRoutes(app: FastifyInstance) {
   // POST /api/posts
   app.post('/', async (req, reply) => {
     const { poll, ...body } = createPostSchema.parse(req.body)
-    const post = await prisma.post.create({
+    let post = await prisma.post.create({
       data: {
         ...body,
         ...(poll ? { poll: { create: poll } } : {}),
       },
       include: { poll: true },
     })
+    // Default the A/B group to this post's own id when a variant is set without an explicit group
+    if (post.abVariant && !post.abGroupId) {
+      post = await prisma.post.update({
+        where: { id: post.id },
+        data: { abGroupId: post.id },
+        include: { poll: true },
+      })
+    }
     return reply.status(201).send(post)
   })
 

@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    /* warm Mondrian canvas — never pure white */
+    background-color: #F5EFE8;
+  }
+}
+
+@layer components {
+  /* ── Page chrome ─────────────────────────────────────────── */
+  .page-title { @apply text-2xl font-bold text-tile-coal tracking-tight; }
+  .page-sub   { @apply text-sm text-tile-coal/60; }
+  .eyebrow    { @apply text-xs font-mono uppercase tracking-widest text-tile-coal/50; }
+
+  /* ── Dark coal panel — the default "tile" card ───────────── */
+  .panel       { @apply bg-tile-coal text-white; }
+  .panel-pad   { @apply bg-tile-coal text-white p-6; }
+  .panel-label { @apply text-xs font-mono uppercase tracking-widest text-white/50; }
+
+  /* ── Form controls (live inside coal panels) ─────────────── */
+  .lbl { @apply block text-xs font-mono uppercase tracking-widest text-white/50 mb-1.5; }
+  .fld {
+    @apply w-full bg-white/5 border border-white/15 text-white placeholder:text-white/30
+           px-3 py-2 text-sm transition-colors
+           focus:outline-none focus:border-tile-pink;
+    color-scheme: dark;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────── */
+  .btn       { @apply bg-tile-pink hover:bg-tile-teal text-tile-coal font-bold px-4 py-2 text-sm transition-colors disabled:opacity-50; }
+  .btn-coal  { @apply bg-tile-blue hover:bg-tile-pink hover:text-tile-coal text-white font-bold px-4 py-2 text-sm transition-colors disabled:opacity-50; }
+  .btn-line  { @apply border border-white/20 text-white/80 hover:bg-white/10 hover:text-white px-4 py-2 text-sm transition-colors disabled:opacity-50; }
+  .btn-ghost { @apply text-white/50 hover:text-white px-3 py-2 text-sm transition-colors disabled:opacity-50; }
+}
