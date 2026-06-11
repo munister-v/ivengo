@@ -167,7 +167,7 @@ export default function GeneratePage() {
         </div>
 
         <button onClick={generate} disabled={loading || !form.theme} className="btn w-full !py-3">
-          {loading ? `⏳ Claude AI генерує ${form.count} постів...` : `✨ Згенерувати ${form.count} ${form.count === 1 ? 'пост' : 'постів'}`}
+          {loading ? `⏳ AI генерує ${form.count} ${form.count === 1 ? 'пост' : 'постів'}...` : `✨ Згенерувати ${form.count} ${form.count === 1 ? 'пост' : 'постів'}`}
         </button>
 
         {error && <p className="text-sm text-white bg-tile-rose px-3 py-2">{error}</p>}

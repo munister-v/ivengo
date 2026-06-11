@@ -49,7 +49,9 @@ export class OpenAICompatibleAdapter {
       throw err
     }
 
-    const data = await res.json()
+    const data = (await res.json()) as {
+      choices?: { message?: { content?: string } }[]
+    }
     return data.choices?.[0]?.message?.content ?? ''
   }
 
@@ -95,7 +97,7 @@ export class OpenAICompatibleAdapter {
 
     return parsed.map((p) => ({
       ...p,
-      type: req.type as ContentType,
+      type: req.contentType as ContentType,
       language: req.language,
       ctaUrl: p.buttons?.[0]?.url ?? req.ctaUrl,
     }))

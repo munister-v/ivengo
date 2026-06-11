@@ -18,12 +18,16 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<StatsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [hasChannels, setHasChannels] = useState<boolean | null>(null)
 
   useEffect(() => {
     api.getStats()
       .then(setStats)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
+    api.getChannels()
+      .then((channels) => setHasChannels(channels.length > 0))
+      .catch(() => setHasChannels(null))
   }, [])
 
   if (loading) return <div className="eyebrow animate-pulse">Завантаження…</div>
@@ -33,6 +37,20 @@ export default function DashboardPage() {
   return (
     <div className="space-y-3">
       <h1 className="page-title">Dashboard</h1>
+
+      {/* ── First-run setup prompt — shown until at least one channel is configured ── */}
+      {hasChannels === false && (
+        <Link
+          href="/channels"
+          className="block panel-pad bg-tile-amber text-tile-coal hover:opacity-90 transition-opacity"
+        >
+          <p className="font-bold text-sm">⚙️ Початкове налаштування: підключіть Telegram-бота і канал</p>
+          <p className="text-sm mt-1 opacity-80">
+            Поки жодного каналу не налаштовано — автопостинг не працюватиме. Натисніть, щоб відкрити сторінку «Канали»
+            з покроковою інструкцією (BotFather, токен, додавання бота в адміни, перевірка підключення).
+          </p>
+        </Link>
+      )}
 
       {/* ── Mondrian hero grid ───────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-0 lg:[&>*]:border lg:[&>*]:border-tile-amber">

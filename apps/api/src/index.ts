@@ -2,6 +2,8 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import sensible from '@fastify/sensible'
+import staticPlugin from '@fastify/static'
+import fs from 'node:fs'
 import { config } from './config'
 import { postsRoutes } from './routes/posts'
 import { batchesRoutes } from './routes/batches'
@@ -11,6 +13,7 @@ import { statsRoutes } from './routes/stats'
 import { monitoringRoutes } from './routes/monitoring'
 import { analyticsRoutes } from './routes/analytics'
 import { mediaRoutes } from './routes/media'
+import { customEmojiRoutes } from './routes/customEmoji'
 
 const app = Fastify({
   logger: {
@@ -29,6 +32,14 @@ async function bootstrap() {
 
   await app.register(jwt, { secret: config.jwtSecret })
   await app.register(sensible)
+
+  // Serve AI-generated images (and other locally stored media) statically
+  const uploadDir = process.env.UPLOAD_DIR ?? '/app/uploads'
+  fs.mkdirSync(uploadDir, { recursive: true })
+  await app.register(staticPlugin, {
+    root: uploadDir,
+    prefix: '/uploads/',
+  })
 
   // Public auth route
   app.post('/api/auth/login', async (req, reply) => {
@@ -50,6 +61,7 @@ async function bootstrap() {
   await app.register(monitoringRoutes, { prefix: '/api/monitoring' })
   await app.register(analyticsRoutes, { prefix: '/api/analytics' })
   await app.register(mediaRoutes, { prefix: '/api/media' })
+  await app.register(customEmojiRoutes, { prefix: '/api/custom-emoji' })
 
   app.setErrorHandler((err, req, reply) => {
     app.log.error({ err, url: req.url }, 'Request error')

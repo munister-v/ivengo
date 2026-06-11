@@ -10,3 +10,6 @@ prisma/migrations/
 coverage/
 .nyc_output/
 DEPLOY_STATUS.md
+
+# Next.js generated
+apps/admin/next-env.d.ts

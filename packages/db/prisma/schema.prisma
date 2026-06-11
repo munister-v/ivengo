@@ -130,17 +130,46 @@ model PublicationLog {
 }
 
 model TelegramChannel {
-  id          String  @id @default(cuid())
-  name        String
-  chatId      String  @unique
-  botToken    String
-  isActive    Boolean @default(true)
-  description String?
+  id            String  @id @default(cuid())
+  name          String
+  chatId        String  @unique
+  botToken      String
+  isActive      Boolean @default(true)
+  description   String?
+  premiumEmoji  Boolean @default(false) // bot/admin has Telegram Premium → render custom emoji
 
   publicationLogs PublicationLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Library of Telegram Premium custom emoji the admin owns. Referenced from post
+/// content via the [ce:<custom_emoji_id>:<fallback>] placeholder syntax.
+model CustomEmoji {
+  id            String   @id @default(cuid())
+  label         String                          // human-friendly name, e.g. "Casino chip"
+  customEmojiId String   @unique                // Telegram custom_emoji_id
+  fallback      String                          // plain unicode shown to non-premium viewers
+  category      String   @default("general")
+  setName       String?                         // owning sticker-set name (from getCustomEmojiStickers)
+  isAnimated    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([category])
+}
+
+/// Tracks themes that have already been generated — feeds into AI prompts to avoid repetition.
+model GenerationMemory {
+  id          String   @id @default(cuid())
+  theme       String
+  contentType String
+  channelId   String?  // null = all channels batch
+
+  usedAt DateTime @default(now())
+
+  @@index([contentType])
+  @@index([usedAt])
 }
 
 model MediaAsset {

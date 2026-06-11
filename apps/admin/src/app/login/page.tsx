@@ -1,23 +1,50 @@
 'use client'
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
-import { saveToken } from '@/lib/auth'
+import { saveToken, saveRememberedPassword, getRememberedPassword, clearRememberedPassword } from '@/lib/auth'
 
 export default function LoginPage() {
   const router = useRouter()
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Pre-fill from a previously "remembered" password, if any.
+  useEffect(() => {
+    const saved = getRememberedPassword()
+    if (saved) {
+      setPassword(saved)
+      setRemember(true)
+    }
+  }, [])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
+    // Trim accidental whitespace/newlines from copy-paste — a common cause
+    // of "Невірний пароль" when the password was copied with a trailing space.
+    const pwd = password.trim()
     try {
-      const { token } = await api.login(password)
+      const { token } = await api.login(pwd)
       saveToken(token)
-      router.push('/')
+      if (remember) {
+        saveRememberedPassword(pwd)
+      } else {
+        clearRememberedPassword()
+      }
+      // First-run UX: if no channels are configured yet, land on the setup page
+      // (publishing can't work without one), otherwise go to the dashboard.
+      let dest = '/'
+      try {
+        const channels = await api.getChannels()
+        if (channels.length === 0) dest = '/channels'
+      } catch {
+        // ignore — fall back to dashboard
+      }
+      router.push(dest)
       router.refresh()
     } catch {
       setError('Невірний пароль')
@@ -46,6 +73,15 @@ export default function LoginPage() {
               required
               className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/30 text-sm focus:outline-none focus:border-tile-pink"
             />
+            <label className="flex items-center gap-2 text-sm text-white/60">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="accent-tile-pink"
+              />
+              Запам&apos;ятати пароль
+            </label>
             {error && <p className="text-sm text-tile-pink">{error}</p>}
             <button
               type="submit"

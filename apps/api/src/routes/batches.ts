@@ -42,7 +42,18 @@ export async function batchesRoutes(app: FastifyInstance) {
 
     try {
       const adapter = createAdapter()
-      const posts = await adapter.generate(body)
+
+      // Theme memory: feed the AI the themes recently used for this content type
+      // so it actively avoids repeating them.
+      const recent = await prisma.generationMemory.findMany({
+        where: { contentType: body.contentType },
+        orderBy: { usedAt: 'desc' },
+        take: 10,
+        select: { theme: true },
+      })
+      const recentThemes = recent.map((r) => r.theme)
+
+      const posts = await adapter.generate({ ...body, recentThemes })
 
       const created = await Promise.all(
         posts.map(async (p, i) => {
@@ -88,6 +99,15 @@ export async function batchesRoutes(app: FastifyInstance) {
       await prisma.contentBatch.update({
         where: { id: batch.id },
         data: { status: 'completed' },
+      })
+
+      // Record this theme so future generations of the same type avoid repeating it.
+      await prisma.generationMemory.create({
+        data: {
+          theme: body.theme,
+          contentType: body.contentType,
+          channelId: body.channelIds?.length === 1 ? body.channelIds[0] : null,
+        },
       })
 
       return reply.status(201).send({ batch, posts: created })

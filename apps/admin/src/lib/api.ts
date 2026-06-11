@@ -93,6 +93,8 @@ export const api = {
     request<void>(`/api/channels/${id}`, { method: 'DELETE' }),
   testChannel: (id: string) =>
     request<{ success: boolean }>(`/api/channels/${id}/test`, { method: 'POST' }),
+  validateChannel: (data: { botToken: string; chatId: string }) =>
+    request<ChannelValidation>('/api/channels/validate', { method: 'POST', body: JSON.stringify(data) }),
 
   // Logs
   getLogs: (params: { status?: string; page?: number } = {}) => {
@@ -114,6 +116,25 @@ export const api = {
   createMedia: (data: { url: string; name?: string; tags?: string }) =>
     request<MediaAsset>('/api/media', { method: 'POST', body: JSON.stringify(data) }),
   deleteMedia: (id: string) => request<void>(`/api/media/${id}`, { method: 'DELETE' }),
+  generateImage: (data: { prompt: string; width?: number; height?: number; seed?: number }) =>
+    request<{ url: string; prompt: string }>('/api/media/generate-image', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Custom (premium) emoji
+  getCustomEmoji: () => request<CustomEmoji[]>('/api/custom-emoji'),
+  createCustomEmoji: (data: Partial<CustomEmoji>) =>
+    request<CustomEmoji>('/api/custom-emoji', { method: 'POST', body: JSON.stringify(data) }),
+  updateCustomEmoji: (id: string, data: Partial<CustomEmoji>) =>
+    request<CustomEmoji>(`/api/custom-emoji/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCustomEmoji: (id: string) =>
+    request<void>(`/api/custom-emoji/${id}`, { method: 'DELETE' }),
+  verifyCustomEmoji: (ids: string[], channelId?: string) =>
+    request<{ results: CustomEmojiVerifyResult[] }>('/api/custom-emoji/verify', {
+      method: 'POST',
+      body: JSON.stringify({ ids, channelId }),
+    }),
 }
 
 // Types
@@ -176,7 +197,41 @@ export interface Channel {
   botToken: string
   isActive: boolean
   description?: string
+  premiumEmoji?: boolean
   createdAt: string
+}
+
+export interface ChannelValidation {
+  normalizedChatId?: string
+  bot: { username?: string; name: string }
+  chat: { title?: string; username?: string; type: string }
+  memberStatus: string | null
+  canPost: boolean | null
+  warning?: string
+}
+
+export interface CustomEmoji {
+  id: string
+  label: string
+  customEmojiId: string
+  fallback: string
+  category: string
+  setName?: string
+  isAnimated: boolean
+  createdAt: string
+}
+
+export interface CustomEmojiVerifyResult {
+  customEmojiId: string
+  valid: boolean
+  emoji: string | null
+  setName: string | null
+  isAnimated: boolean
+}
+
+/** Build the [ce:id:fallback] placeholder for inserting a premium emoji into content. */
+export function emojiPlaceholder(e: Pick<CustomEmoji, 'customEmojiId' | 'fallback'>): string {
+  return `[ce:${e.customEmojiId}:${e.fallback}]`
 }
 
 export interface Batch {

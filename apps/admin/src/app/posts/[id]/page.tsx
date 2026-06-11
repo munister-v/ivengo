@@ -1,9 +1,11 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api, type Post, type ComplianceFlag } from '@/lib/api'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ChannelPicker } from '@/components/ChannelPicker'
+import { PremiumEmojiBar } from '@/components/PremiumEmojiBar'
+import { ImageGenerator } from '@/components/ImageGenerator'
 
 const TYPE_LABELS: Record<string, string> = {
   short_post: 'Короткий пост', article: 'Стаття', poll: 'Опитування',
@@ -25,6 +27,8 @@ export default function PostDetailPage() {
   const [post, setPost] = useState<Post | null>(null)
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+  const contentRef = useRef<HTMLTextAreaElement>(null)
   const [channelIds, setChannelIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -39,6 +43,7 @@ export default function PostDetailPage() {
       setPost(p)
       setContent(p.content)
       setTitle(p.title ?? '')
+      setImageUrl(p.imageUrl ?? '')
       setChannelIds(p.channelIds ?? [])
       setComplianceFlags(p.complianceChecks?.[0]?.flags ?? [])
     }).finally(() => setLoading(false))
@@ -53,7 +58,7 @@ export default function PostDetailPage() {
     if (!post) return
     setSaving(true)
     try {
-      const updated = await api.updatePost(post.id, { content, title: title || undefined, channelIds })
+      const updated = await api.updatePost(post.id, { content, title: title || undefined, channelIds, imageUrl: imageUrl || undefined })
       setPost(updated)
       notify('Збережено')
     } catch (e: unknown) {
@@ -129,8 +134,27 @@ export default function PostDetailPage() {
 
         <div>
           <label className="lbl">Текст посту (Telegram Markdown)</label>
-          <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={12} className="fld font-mono resize-y" />
+          <textarea ref={contentRef} value={content} onChange={(e) => setContent(e.target.value)} rows={12} className="fld font-mono resize-y" />
           <p className="text-xs text-white/40 mt-1 font-mono">{content.length} символів</p>
+          <PremiumEmojiBar textareaRef={contentRef} setContent={setContent} />
+        </div>
+
+        <div className="space-y-2">
+          <label className="lbl">Зображення (URL)</label>
+          <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="fld" placeholder="https://..." />
+          {imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="" className="mt-2 h-24 object-cover" />
+          )}
+          <div className="bg-white/5 p-3">
+            <ImageGenerator
+              onUse={(url) => setImageUrl(url)}
+              onSave={async (url, prompt) => {
+                await api.createMedia({ url, name: prompt.slice(0, 60), tags: 'AI' })
+                setImageUrl(url)
+              }}
+            />
+          </div>
         </div>
 
         {post.poll && (

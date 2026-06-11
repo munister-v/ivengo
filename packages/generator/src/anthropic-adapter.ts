@@ -32,7 +32,7 @@ export class AnthropicAdapter {
 
     return parsed.map((p) => ({
       ...p,
-      type: req.type as ContentType,
+      type: req.contentType as ContentType,
       language: req.language,
       ctaUrl: p.buttons?.[0]?.url ?? req.ctaUrl,
     }))

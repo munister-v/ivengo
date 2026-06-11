@@ -1,8 +1,10 @@
 'use client'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { api, type Post, type MediaAsset } from '@/lib/api'
 import { ChannelPicker } from '@/components/ChannelPicker'
+import { ImageGenerator } from '@/components/ImageGenerator'
+import { PremiumEmojiBar } from '@/components/PremiumEmojiBar'
 import { TEMPLATES, TEMPLATE_GROUPS } from './templates'
 
 const TYPES = [
@@ -48,6 +50,7 @@ function ConstructorForm() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
   const [showMediaPicker, setShowMediaPicker] = useState(false)
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([])
+  const contentRef = useRef<HTMLTextAreaElement>(null)
   const [abVariant, setAbVariant] = useState('')
   const [abGroupId, setAbGroupId] = useState('')
   const [sourcePostId, setSourcePostId] = useState('')
@@ -268,11 +271,12 @@ function ConstructorForm() {
 
         <div>
           <label className="lbl">Текст посту (Telegram Markdown)</label>
-          <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={8}
+          <textarea ref={contentRef} value={content} onChange={(e) => setContent(e.target.value)} rows={8}
             className="fld font-mono resize-y" placeholder="*Жирний*, _курсив_, емодзі — все працює" />
+          <PremiumEmojiBar textareaRef={contentRef} setContent={setContent} />
         </div>
 
-        <div>
+        <div className="space-y-2">
           <label className="lbl">Зображення (URL)</label>
           <div className="flex gap-2">
             <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="fld flex-1" placeholder="https://..." />
@@ -282,6 +286,16 @@ function ConstructorForm() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={imageUrl} alt="" className="mt-2 h-24 object-cover" />
           )}
+          <div className="bg-white/5 p-3">
+            <ImageGenerator
+              onUse={(url) => setImageUrl(url)}
+              onSave={async (url, prompt) => {
+                const asset = await api.createMedia({ url, name: prompt.slice(0, 60), tags: 'AI' })
+                setMediaAssets((m) => [asset, ...m])
+                setImageUrl(url)
+              }}
+            />
+          </div>
         </div>
 
         {showMediaPicker && (

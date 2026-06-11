@@ -170,7 +170,9 @@ export async function postsRoutes(app: FastifyInstance) {
   // PATCH /api/posts/:id
   app.patch('/:id', async (req, reply) => {
     const { id } = req.params as { id: string }
-    const body = updatePostSchema.parse(req.body)
+    // `poll` is a nested relation, not a scalar column — it can't be written
+    // through a plain update, and the editor doesn't send it here. Drop it.
+    const { poll: _poll, ...body } = updatePostSchema.parse(req.body)
     const post = await prisma.post.update({ where: { id }, data: body })
     return post
   })
@@ -268,7 +270,10 @@ export async function postsRoutes(app: FastifyInstance) {
 
     for (const channel of channels) {
       try {
-        const messageId = await publishPostToChannel({ botToken: channel.botToken, chatId: channel.chatId }, publishable)
+        const messageId = await publishPostToChannel(
+          { botToken: channel.botToken, chatId: channel.chatId, premiumEmoji: channel.premiumEmoji },
+          publishable,
+        )
         lastMessageId = messageId
         results.push({ channel: channel.name, ok: true, messageId })
         await prisma.publicationLog.create({

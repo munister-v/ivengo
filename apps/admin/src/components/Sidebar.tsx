@@ -13,6 +13,7 @@ const nav = [
   { href: '/ab', label: 'A/B Тести', icon: '⚗' },
   { href: '/media', label: 'Медіа', icon: '▣' },
   { href: '/channels', label: 'Канали', icon: '⛓' },
+  { href: '/emoji', label: 'Преміум емодзі', icon: '★' },
   { href: '/analytics', label: 'Аналітика', icon: '▤' },
   { href: '/logs', label: 'Журнал', icon: '☰' },
   { href: '/monitoring', label: 'Моніторинг', icon: '✚' },

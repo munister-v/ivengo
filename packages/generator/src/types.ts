@@ -28,6 +28,10 @@ export interface GenerationRequest {
   count: number
   ctaUrl?: string
   channelName?: string
+  /** Themes recently used for this contentType — AI avoids repeating them */
+  recentThemes?: string[]
+  /** Channel-specific notes injected into the AI system prompt */
+  promptNotes?: string
 }
 
 export interface GeneratedPost {

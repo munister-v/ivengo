@@ -1,4 +1,5 @@
 import { TelegramClient } from './client'
+import { renderContent } from './emoji'
 import type { TelegramConfig } from './types'
 
 /**
@@ -37,11 +38,21 @@ export async function publishPostToChannel(config: TelegramConfig, post: Publish
     return String(msg.message_id)
   }
 
+  // Render premium custom emoji (or collapse placeholders to unicode fallback).
+  const rendered = renderContent(post.content, { premium: config.premiumEmoji })
+
   if (post.imageUrl) {
-    const msg = await client.sendPhoto(post.imageUrl, { caption: post.content, buttons })
+    const msg = await client.sendPhoto(post.imageUrl, {
+      caption: rendered.text,
+      parseMode: rendered.parseMode,
+      buttons,
+    })
     return String(msg.message_id)
   }
 
-  const msg = await client.sendMessage(post.content, { buttons })
+  const msg = await client.sendMessage(rendered.text, {
+    parseMode: rendered.parseMode,
+    buttons,
+  })
   return String(msg.message_id)
 }

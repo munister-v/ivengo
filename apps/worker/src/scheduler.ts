@@ -34,7 +34,7 @@ async function notifyAdmin(events: NotifyEvent[], logger: Logger): Promise<void>
   }
 }
 
-type ActiveChannel = { id: string; name: string; chatId: string; botToken: string }
+type ActiveChannel = { id: string; name: string; chatId: string; botToken: string; premiumEmoji: boolean }
 
 /** Resolve which active channels a post targets: its explicit list, or all active when none set. */
 function targetsFor(post: { channelIds: unknown }, active: ActiveChannel[]): ActiveChannel[] {
@@ -126,7 +126,10 @@ export async function runSchedulerTick(logger: Logger): Promise<void> {
 
     for (const channel of targets) {
       try {
-        const messageId = await publishPostToChannel({ botToken: channel.botToken, chatId: channel.chatId }, publishable)
+        const messageId = await publishPostToChannel(
+          { botToken: channel.botToken, chatId: channel.chatId, premiumEmoji: channel.premiumEmoji },
+          publishable,
+        )
         anySuccess = true
         lastMessageId = messageId
         okNames.push(channel.name)

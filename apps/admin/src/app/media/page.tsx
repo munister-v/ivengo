@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { api, type MediaAsset } from '@/lib/api'
+import { ImageGenerator } from '@/components/ImageGenerator'
 
 export default function MediaPage() {
   const [assets, setAssets] = useState<MediaAsset[]>([])
@@ -49,9 +50,29 @@ export default function MediaPage() {
     navigator.clipboard?.writeText(u)
   }
 
+  async function quickSave(genUrl: string, prompt: string) {
+    setSaving(true)
+    setError('')
+    try {
+      await api.createMedia({ url: genUrl, name: prompt.slice(0, 60), tags: 'AI' })
+      await load()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Помилка збереження')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-4 max-w-3xl">
       <h1 className="page-title">🖼️ Бібліотека медіа</h1>
+
+      <div className="panel-pad">
+        <ImageGenerator
+          onUse={(genUrl, prompt) => { setUrl(genUrl); setName(prompt.slice(0, 60)); setTags('AI') }}
+          onSave={quickSave}
+        />
+      </div>
 
       <div className="panel-pad space-y-3">
         <h2 className="panel-label">Додати зображення за URL</h2>

@@ -1,4 +1,4 @@
-import type { GenerationRequest, GeneratedPost, ContentType } from './types'
+import type { GenerationRequest } from './types'
 
 const LANG_LABELS: Record<string, string> = {
   uk: 'Ukrainian (Українська)',
@@ -48,6 +48,24 @@ function buildContext(req: GenerationRequest) {
 }
 
 // ─────────────────────────────────────────────
+// Memory / notes block appended to every prompt
+// ─────────────────────────────────────────────
+
+function buildMemoryBlock(req: GenerationRequest): string {
+  const parts: string[] = []
+  if (req.recentThemes?.length) {
+    parts.push(
+      `\nIMPORTANT — these themes were recently used; be creative and find fresh angles (don't repeat them):\n` +
+      req.recentThemes.slice(0, 10).map((t, i) => `  ${i + 1}. "${t}"`).join('\n'),
+    )
+  }
+  if (req.promptNotes?.trim()) {
+    parts.push(`\nChannel-specific notes (follow strictly): ${req.promptNotes.trim()}`)
+  }
+  return parts.join('\n')
+}
+
+// ─────────────────────────────────────────────
 // Per-type system + user prompts
 // ─────────────────────────────────────────────
 
@@ -62,7 +80,10 @@ Return ONLY a valid JSON array of ${count} post objects — no extra text, no ma
 Each object fields: "title" (string|null), "content" (string, use Telegram Markdown: *bold*, _italic_, use emojis liberally), "buttons" ([{"text": string, "url": string}]|null).
 All posts must be unique. Make each post feel natural and conversational, not robotic.`.trim()
 
-  switch (req.type) {
+  const memoryBlock = buildMemoryBlock(req)
+
+  // BUG FIX: switch on req.contentType (was incorrectly req.type — caused all posts to use default prompt)
+  switch (req.contentType) {
     // ── USER STORY ──────────────────────────────
     case 'user_story': {
       const system = `You are a copywriter for a Ukrainian Telegram casino channel "${ctx.channelName}".
@@ -92,7 +113,7 @@ ${commonRules}`
 Use these for variation — names: ${UA_NAMES_M.concat(UA_NAMES_F).join(', ')}; cities: ${UA_CITIES.join(', ')}.
 CTA URL: ${ctx.ctaUrl}`
 
-      return { system, user }
+      return { system: system + memoryBlock, user }
     }
 
     // ── URGENCY OFFER ───────────────────────────
@@ -130,7 +151,7 @@ ${commonRules}`
 Vary between FORMAT A and FORMAT B. Make each feel genuinely urgent and different.
 CTA URL: ${ctx.ctaUrl}`
 
-      return { system, user }
+      return { system: system + memoryBlock, user }
     }
 
     // ── ENGAGEMENT POLL ─────────────────────────
@@ -155,7 +176,7 @@ Include a "poll" object in each post. Make polls fun and relatable for casino pl
 
       // Add poll field to output schema instruction
       return {
-        system: system + '\nEach object must also have "poll": {"question": string, "options": string[], "isAnonymous": true}.',
+        system: system + '\nEach object must also have "poll": {"question": string, "options": string[], "isAnonymous": true}.' + memoryBlock,
         user,
       }
     }
@@ -173,7 +194,7 @@ Style reference:
 Topic: "${req.theme}"
 ${commonRules}`
       const user = `Generate ${count} short posts. CTA URL: ${ctx.ctaUrl || 'none'}`
-      return { system, user }
+      return { system: system + memoryBlock, user }
     }
 
     // ── MYTH / FACT ─────────────────────────────
@@ -194,7 +215,7 @@ Rules:
 - End with 18+ label
 ${commonRules}`
       const user = `Generate ${count} myth-fact posts about: "${req.theme}".`
-      return { system, user }
+      return { system: system + memoryBlock, user }
     }
 
     // ── RESPONSIBLE GAMBLING ────────────────────
@@ -214,7 +235,7 @@ Rules:
 - NO promotional content whatsoever
 ${commonRules}`
       const user = `Generate ${count} responsible gambling posts about: "${req.theme}".`
-      return { system, user }
+      return { system: system + memoryBlock, user }
     }
 
     // ── POLL (quiz style) ───────────────────────
@@ -226,7 +247,7 @@ Make it a QUIZ (one correct answer). Include the answer explanation in "content"
 ${commonRules}`
       const user = `Generate ${count} quiz poll posts about: "${req.theme}".`
       return {
-        system: system + '\nInclude "poll" field with correctOptionId.',
+        system: system + '\nInclude "poll" field with correctOptionId.' + memoryBlock,
         user,
       }
     }
@@ -240,11 +261,11 @@ ${commonRules}`
         news: 'News-style post: headline in caps, then 2-3 short paragraphs. Factual tone.',
       }
       const system = `You are a copywriter for a Ukrainian Telegram casino channel "${ctx.channelName}".
-Post type: ${typeInstructions[req.type] ?? 'engaging post'}
+Post type: ${typeInstructions[req.contentType] ?? 'engaging post'}
 Topic: "${req.theme}"
 ${commonRules}`
       const user = `Generate ${count} posts. CTA URL if relevant: ${ctx.ctaUrl || 'none'}`
-      return { system, user }
+      return { system: system + memoryBlock, user }
     }
   }
 }

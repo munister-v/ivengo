@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@ivengo/db'
-import { TelegramClient } from '@ivengo/telegram'
+import { TelegramClient, normalizeChatId, isInviteLink } from '@ivengo/telegram'
 import { authenticate } from '../plugins/auth'
 
 const channelSchema = z.object({
@@ -10,6 +10,12 @@ const channelSchema = z.object({
   botToken: z.string().min(10),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
+  premiumEmoji: z.boolean().default(false),
+})
+
+const validateSchema = z.object({
+  botToken: z.string().min(10),
+  chatId: z.string().min(1),
 })
 
 export async function channelsRoutes(app: FastifyInstance) {
@@ -19,16 +25,84 @@ export async function channelsRoutes(app: FastifyInstance) {
     return prisma.telegramChannel.findMany({ orderBy: { createdAt: 'desc' } })
   })
 
+  // Validate a bot token + chat ID before saving — checks the token is valid,
+  // the bot can see the chat, and the bot has permission to post there.
+  app.post('/validate', async (req, reply) => {
+    const { botToken, chatId } = validateSchema.parse(req.body)
+
+    // Private invite links (t.me/+hash, joinchat) cannot serve as a chat_id.
+    if (isInviteLink(chatId)) {
+      return reply.status(400).send({
+        error:
+          'Це приватне посилання-запрошення — його не можна використати як Chat ID. Додайте бота адміністратором у канал і вкажіть @username (публічні) або числовий ID -100… (приватні).',
+      })
+    }
+
+    // Accept @nick, t.me/nick, https://t.me/nick, bare nick or numeric id.
+    const normalizedChatId = normalizeChatId(chatId)
+    const client = new TelegramClient({ botToken, chatId: normalizedChatId })
+
+    let me: { id: number; username?: string; first_name: string }
+    try {
+      me = await client.getMe()
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : String(err)
+      return reply.status(400).send({ error: `Невірний токен бота: ${error}` })
+    }
+
+    let chat: { title?: string; username?: string; type: string }
+    try {
+      chat = await client.getChat()
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : String(err)
+      return reply.status(400).send({
+        error: `Бот не бачить цей чат/канал: ${error}. Перевірте Chat ID та переконайтесь, що бот доданий до каналу.`,
+        bot: { username: me.username, name: me.first_name },
+      })
+    }
+
+    let canPost: boolean | null = null
+    let memberStatus: string | null = null
+    try {
+      const member = await client.getChatMember(me.id)
+      memberStatus = member.status
+      canPost = member.status === 'creator'
+        || member.status === 'administrator'
+        || member.status === 'member'
+      if (member.status === 'administrator' && member.can_post_messages === false) {
+        canPost = false
+      }
+    } catch {
+      // getChatMember may fail for some chat types — not fatal, the test message will tell the truth
+    }
+
+    return {
+      normalizedChatId,
+      bot: { username: me.username, name: me.first_name },
+      chat: { title: chat.title, username: chat.username, type: chat.type },
+      memberStatus,
+      canPost,
+      warning: canPost === false
+        ? 'Бот доданий до каналу, але не має прав публікувати повідомлення. Зробіть його адміністратором з правом "Публікація повідомлень".'
+        : undefined,
+    }
+  })
+
   app.post('/', async (req, reply) => {
     const body = channelSchema.parse(req.body)
-    const channel = await prisma.telegramChannel.create({ data: body })
+    const channel = await prisma.telegramChannel.create({
+      data: { ...body, chatId: normalizeChatId(body.chatId) },
+    })
     return reply.status(201).send(channel)
   })
 
   app.patch('/:id', async (req, reply) => {
     const { id } = req.params as { id: string }
     const body = channelSchema.partial().parse(req.body)
-    const channel = await prisma.telegramChannel.update({ where: { id }, data: body })
+    const channel = await prisma.telegramChannel.update({
+      where: { id },
+      data: { ...body, ...(body.chatId ? { chatId: normalizeChatId(body.chatId) } : {}) },
+    })
     return channel
   })
 
