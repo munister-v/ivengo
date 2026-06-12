@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { api, type Post } from '@/lib/api'
 import { ChannelPicker } from '@/components/ChannelPicker'
+import { SystemAlert } from '@/components/SystemAlert'
 
 const TYPES = [
   { value: 'user_story',      label: '🧑 Історія виграшу (User Story)', badge: 'Хіт' },
@@ -170,7 +171,11 @@ export default function GeneratePage() {
           {loading ? `⏳ AI генерує ${form.count} ${form.count === 1 ? 'пост' : 'постів'}...` : `✨ Згенерувати ${form.count} ${form.count === 1 ? 'пост' : 'постів'}`}
         </button>
 
-        {error && <p className="text-sm text-white bg-tile-rose px-3 py-2">{error}</p>}
+        {error && (
+          <SystemAlert tone="error" title="Генерація не завершена">
+            {error}. Перевірте тему, AI-провайдера та повторіть запит.
+          </SystemAlert>
+        )}
       </div>
 
       {result && (

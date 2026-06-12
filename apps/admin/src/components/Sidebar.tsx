@@ -56,13 +56,16 @@ export function Sidebar() {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-tile-coal focus:px-4 focus:py-3 focus:text-white">
         До основного вмісту
       </a>
-      <header className="sticky top-0 z-30 border-b border-tile-coal bg-tile-amber/95 backdrop-blur-sm">
-        <div className="flex min-h-16 items-stretch">
-          <Link href="/" className="flex min-w-[220px] items-center gap-3 border-r border-tile-coal px-4 lg:px-6" aria-label="Ivengo — головна">
-            <span className="flex h-4 w-4 items-center justify-center rounded-full border border-tile-coal">
-              <span className="h-1.5 w-1.5 rounded-full bg-tile-coal" />
+      <header className="sticky top-0 z-30 border-b-2 border-tile-coal bg-tile-amber/95 backdrop-blur-sm">
+        <div className="flex min-h-[76px] items-stretch">
+          <Link href="/" className="flex min-w-[260px] items-center gap-4 border-r border-tile-coal px-4 lg:px-6" aria-label="Ivengo — головна">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-tile-coal">
+              <span className="h-2.5 w-2.5 rounded-full bg-tile-coal" />
             </span>
-            <span className="font-mono text-xs uppercase tracking-[0.24em]">Ivengo Studio</span>
+            <span>
+              <span className="block text-xl font-bold leading-none tracking-[-0.035em]">IVENGO</span>
+              <span className="mt-1 block font-mono text-[8px] font-bold uppercase tracking-[0.28em] text-tile-coal/55">Editorial system</span>
+            </span>
           </Link>
 
           <nav className="hidden min-w-0 flex-1 overflow-x-auto lg:flex" aria-label="Головна навігація">
@@ -73,12 +76,12 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`group flex min-w-[92px] flex-1 flex-col justify-center border-r border-tile-coal px-3 py-2 font-mono uppercase ${
+                  className={`group flex min-w-[92px] flex-1 flex-col justify-center border-r border-tile-coal px-3 py-2 font-mono font-bold uppercase ${
                     active ? 'bg-tile-coal text-tile-amber' : 'text-tile-coal hover:bg-tile-coal hover:text-tile-amber'
                   }`}
                 >
-                  <span className="text-[8px] tracking-[0.18em] opacity-50">{item.index}</span>
-                  <span className="mt-1 flex items-center justify-between gap-2 text-[10px] tracking-[0.13em]">
+                  <span className="text-[8px] tracking-[0.18em] opacity-45">{item.index}</span>
+                  <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] tracking-[0.13em]">
                     {item.label}
                     {badge > 0 && (
                       <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[8px] ${
@@ -102,7 +105,7 @@ export function Sidebar() {
 
           <button
             onClick={() => setOpen(true)}
-            className="ml-auto flex min-h-16 min-w-16 items-center justify-center border-l border-tile-coal font-mono text-xs uppercase tracking-widest lg:hidden"
+            className="ml-auto flex min-h-[76px] min-w-[76px] items-center justify-center border-l border-tile-coal font-mono text-xs font-bold uppercase tracking-widest lg:hidden"
             aria-label="Відкрити меню"
             aria-expanded={open}
           >

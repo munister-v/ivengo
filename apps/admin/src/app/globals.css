@@ -48,7 +48,7 @@
 
   button,
   a {
-    transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, opacity 180ms ease;
+    transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, opacity 180ms ease, transform 180ms ease;
   }
 
   input,
@@ -60,11 +60,13 @@
 
 @layer components {
   .page-title {
-    @apply text-3xl lg:text-5xl font-normal text-tile-coal tracking-tight;
-    line-height: 0.98;
+    @apply text-4xl sm:text-5xl lg:text-7xl font-bold text-tile-coal;
+    line-height: 0.9;
+    letter-spacing: -0.045em;
+    text-wrap: balance;
   }
-  .page-sub { @apply text-base text-tile-coal/60; }
-  .eyebrow { @apply text-[11px] font-mono uppercase tracking-[0.18em] text-tile-coal/55; }
+  .page-sub { @apply text-base lg:text-lg text-tile-coal/60 leading-relaxed; }
+  .eyebrow { @apply text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-tile-coal/55; }
 
   .panel {
     @apply bg-[#fffdf9] text-tile-coal border border-tile-coal/35;
@@ -73,7 +75,7 @@
     @apply bg-[#fffdf9] text-tile-coal border border-tile-coal/35 p-5 lg:p-6;
   }
   .panel-label {
-    @apply text-[10px] font-mono uppercase tracking-[0.2em] text-tile-coal/55;
+    @apply text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-tile-coal/55;
   }
 
   .panel .text-white,
@@ -122,18 +124,28 @@
            focus:outline-none focus:border-tile-coal;
     color-scheme: light;
   }
+  .fld-error {
+    @apply border-tile-rose bg-tile-rose/5;
+    box-shadow: inset 4px 0 0 #9c3f4f;
+  }
+  .field-error {
+    @apply mt-2 flex items-start gap-2 text-sm font-semibold text-tile-rose;
+  }
+  .section-title {
+    @apply text-2xl lg:text-3xl font-bold tracking-[-0.025em] text-tile-coal;
+  }
 
   .btn {
-    @apply bg-tile-coal hover:bg-brand-600 text-[#fffdf9] font-mono uppercase tracking-[0.12em] px-4 py-2.5 text-xs transition-colors disabled:opacity-50;
+    @apply bg-tile-coal hover:bg-brand-600 text-[#fffdf9] font-mono font-bold uppercase tracking-[0.12em] px-4 py-2.5 text-xs transition-colors disabled:opacity-50 active:translate-y-px;
   }
   .btn-coal {
-    @apply bg-transparent hover:bg-tile-coal hover:text-[#fffdf9] border border-tile-coal text-tile-coal font-mono uppercase tracking-[0.12em] px-4 py-2.5 text-xs transition-colors disabled:opacity-50;
+    @apply bg-transparent hover:bg-tile-coal hover:text-[#fffdf9] border border-tile-coal text-tile-coal font-mono font-bold uppercase tracking-[0.12em] px-4 py-2.5 text-xs transition-colors disabled:opacity-50 active:translate-y-px;
   }
   .btn-line {
-    @apply border border-tile-coal/45 text-tile-coal hover:bg-tile-coal hover:text-[#fffdf9] px-4 py-2.5 text-xs font-mono uppercase tracking-[0.12em] transition-colors disabled:opacity-50;
+    @apply border border-tile-coal/45 text-tile-coal hover:bg-tile-coal hover:text-[#fffdf9] px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-[0.12em] transition-colors disabled:opacity-50 active:translate-y-px;
   }
   .btn-ghost {
-    @apply text-tile-coal/60 hover:text-tile-coal px-3 py-2 text-xs font-mono uppercase tracking-[0.12em] transition-colors disabled:opacity-50;
+    @apply text-tile-coal/60 hover:text-tile-coal px-3 py-2 text-xs font-mono font-bold uppercase tracking-[0.12em] transition-colors disabled:opacity-50;
   }
 }
 

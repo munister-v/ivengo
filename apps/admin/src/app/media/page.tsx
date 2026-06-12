@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { api, type MediaAsset } from '@/lib/api'
 import { ImageGenerator } from '@/components/ImageGenerator'
+import { SystemAlert } from '@/components/SystemAlert'
 
 export default function MediaPage() {
   const [assets, setAssets] = useState<MediaAsset[]>([])
@@ -81,7 +82,11 @@ export default function MediaPage() {
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Назва (необов'язково)" className="fld" />
           <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Теги через кому (бонус, слот...)" className="fld" />
         </div>
-        {error && <p className="text-sm text-white bg-tile-rose px-3 py-2">{error}</p>}
+        {error && (
+          <SystemAlert tone="error" title="Медіа не додано">
+            {error}. Перевірте URL і доступність зображення.
+          </SystemAlert>
+        )}
         <button onClick={add} disabled={saving || !url} className="btn">{saving ? 'Додавання...' : '+ Додати'}</button>
       </div>
 

@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { api } from '@/lib/api'
+import { SystemAlert } from '@/components/SystemAlert'
 
 const SIZES = {
   square: { width: 512, height: 512, label: '⬛ 1:1' },
@@ -106,7 +107,11 @@ export function ImageGenerator({ onUse, onSave }: ImageGeneratorProps) {
         />
       )}
 
-      {error && <p className="text-sm text-white bg-tile-rose px-3 py-2">{error}</p>}
+      {error && (
+        <SystemAlert tone="error" title="Зображення не згенеровано">
+          {error}. Перевірте опис або повторіть спробу за хвилину.
+        </SystemAlert>
+      )}
       {loading && (
         <div className="h-40 bg-white/5 animate-pulse flex items-center justify-center text-xs text-white/40 text-center px-4">
           Генерується через спільну безкоштовну мережу AI Horde...

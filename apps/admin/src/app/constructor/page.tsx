@@ -6,6 +6,7 @@ import { ChannelPicker } from '@/components/ChannelPicker'
 import { ImageGenerator } from '@/components/ImageGenerator'
 import { PremiumEmojiBar } from '@/components/PremiumEmojiBar'
 import { AiTextTools } from '@/components/AiTextTools'
+import { SystemAlert } from '@/components/SystemAlert'
 import { TEMPLATES, TEMPLATE_GROUPS } from './templates'
 
 const TYPES = [
@@ -21,8 +22,25 @@ const TYPES = [
 ]
 
 interface ButtonRow { text: string; url: string }
+interface ValidationIssue {
+  id: string
+  fieldId: string
+  severity: 'error' | 'warning'
+  title: string
+  detail: string
+}
 
 const DRAFT_KEY = 'ivengo_constructor_draft_v2'
+
+function isValidHttpUrl(value: string): boolean {
+  if (!value.trim()) return true
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
 
 interface LocalDraft {
   savedAt: string
@@ -77,6 +95,7 @@ function ConstructorForm() {
   const [sourcePostId, setSourcePostId] = useState('')
   const [recoverableDraft, setRecoverableDraft] = useState<LocalDraft | null>(null)
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [validationVisible, setValidationVisible] = useState(false)
   const autosaveReady = useRef(false)
 
   useEffect(() => {
@@ -106,6 +125,52 @@ function ConstructorForm() {
     ]
     return Math.round((checks.filter(Boolean).length / checks.length) * 100)
   }, [buttons, channelIds.length, content, imageUrl, isPollType, pollOptions, pollQuestion, title])
+
+  const validationIssues = useMemo<ValidationIssue[]>(() => {
+    const issues: ValidationIssue[] = []
+    if (!content.trim()) {
+      issues.push({ id: 'content-empty', fieldId: 'post-content', severity: 'error', title: 'Немає тексту посту', detail: 'Додайте основний текст перед збереженням.' })
+    } else if (content.length > contentLimit) {
+      issues.push({ id: 'content-limit', fieldId: 'post-content', severity: 'error', title: 'Перевищено ліміт Telegram', detail: `Скоротіть текст на ${content.length - contentLimit} символів.` })
+    }
+    if (imageUrl && !isValidHttpUrl(imageUrl)) {
+      issues.push({ id: 'image-url', fieldId: 'image-url', severity: 'error', title: 'Некоректна адреса зображення', detail: 'URL має починатися з http:// або https://.' })
+    }
+    if (ctaUrl && !isValidHttpUrl(ctaUrl)) {
+      issues.push({ id: 'cta-url', fieldId: 'cta-url', severity: 'error', title: 'Некоректне CTA-посилання', detail: 'Перевірте адресу переходу.' })
+    }
+    buttons.forEach((button, index) => {
+      const hasAnyValue = button.text.trim() || button.url.trim()
+      if (hasAnyValue && (!button.text.trim() || !button.url.trim())) {
+        issues.push({ id: `button-incomplete-${index}`, fieldId: `button-text-${index}`, severity: 'error', title: `Кнопка ${index + 1} заповнена не повністю`, detail: 'Потрібні і текст, і URL.' })
+      } else if (button.url && !isValidHttpUrl(button.url)) {
+        issues.push({ id: `button-url-${index}`, fieldId: `button-url-${index}`, severity: 'error', title: `Некоректний URL кнопки ${index + 1}`, detail: 'Використовуйте повне http(s)-посилання.' })
+      }
+    })
+    if (isPollType && !pollQuestion.trim()) {
+      issues.push({ id: 'poll-question', fieldId: 'poll-question', severity: 'error', title: 'Немає питання опитування', detail: 'Сформулюйте питання для аудиторії.' })
+    }
+    if (isPollType && pollOptions.filter((option) => option.trim()).length < 2) {
+      issues.push({ id: 'poll-options', fieldId: 'poll-option-0', severity: 'error', title: 'Недостатньо варіантів відповіді', detail: 'Додайте щонайменше два варіанти.' })
+    }
+    if (scheduledAt && new Date(scheduledAt).getTime() <= Date.now()) {
+      issues.push({ id: 'schedule-past', fieldId: 'scheduled-at', severity: 'error', title: 'Час публікації вже минув', detail: 'Оберіть дату і час у майбутньому.' })
+    }
+    if (!title.trim()) {
+      issues.push({ id: 'title-missing', fieldId: 'post-title', severity: 'warning', title: 'Немає внутрішнього заголовка', detail: 'Заголовок полегшує пошук матеріалу в архіві.' })
+    }
+    if (!imageUrl) {
+      issues.push({ id: 'image-missing', fieldId: 'image-url', severity: 'warning', title: 'Пост без візуалу', detail: 'Зображення зазвичай покращує помітність у стрічці.' })
+    }
+    if (channelIds.length === 0) {
+      issues.push({ id: 'all-channels', fieldId: 'channel-picker', severity: 'warning', title: 'Обрані всі активні канали', detail: 'Перевірте, чи матеріал справді має вийти всюди.' })
+    }
+    return issues
+  }, [buttons, channelIds.length, content, contentLimit, ctaUrl, imageUrl, isPollType, pollOptions, pollQuestion, scheduledAt, title])
+
+  const errorIds = new Set(validationIssues.filter((issue) => issue.severity === 'error').map((issue) => issue.fieldId))
+  const errorCount = validationIssues.filter((issue) => issue.severity === 'error').length
+  const warningCount = validationIssues.filter((issue) => issue.severity === 'warning').length
 
   useEffect(() => {
     if (!autosaveReady.current || recoverableDraft) return
@@ -169,6 +234,12 @@ function ConstructorForm() {
     const date = new Date(Date.now() + hours * 60 * 60 * 1000)
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
     setScheduledAt(local)
+  }
+
+  function focusIssue(fieldId: string) {
+    const element = document.getElementById(fieldId)
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => element?.focus(), 350)
   }
 
   function applyPost(p: Post) {
@@ -246,22 +317,16 @@ function ConstructorForm() {
   function removeOption(i: number) { setPollOptions((o) => o.filter((_, idx) => idx !== i)) }
 
   async function save(asScheduled: boolean) {
-    if (!content.trim()) { notify('Введіть текст посту', 'error'); return }
-    if (content.length > contentLimit) {
-      notify(`Скоротіть текст до ${contentLimit} символів${imageUrl ? ' для посту із зображенням' : ''}`, 'error')
-      contentRef.current?.focus()
-      return
-    }
-    if (isPollType && (!pollQuestion.trim() || pollOptions.filter((o) => o.trim()).length < 2)) {
-      notify('Заповніть питання та мінімум 2 варіанти відповіді', 'error')
+    setValidationVisible(true)
+    const firstError = validationIssues.find((issue) => issue.severity === 'error')
+    if (firstError) {
+      notify(`Перевірте матеріал: ${firstError.title}`, 'error')
+      focusIssue(firstError.fieldId)
       return
     }
     if (asScheduled && !scheduledAt) {
       notify('Оберіть дату та час у полі «Запланувати на» — або натисніть «На ревʼю», щоб зберегти чернетку', 'error')
-      return
-    }
-    if (asScheduled && new Date(scheduledAt).getTime() < Date.now()) {
-      notify('Дата публікації вже минула — оберіть час у майбутньому', 'error')
+      focusIssue('scheduled-at')
       return
     }
     setSaving(true)
@@ -333,9 +398,9 @@ function ConstructorForm() {
       </header>
 
       {message && (
-        <div role="status" aria-live="polite" className={`border px-4 py-3 text-sm ${message.type === 'success' ? 'border-tile-teal bg-tile-teal/30 text-tile-coal' : 'border-tile-rose bg-tile-rose/10 text-tile-rose'}`}>
+        <SystemAlert tone={message.type === 'success' ? 'success' : 'error'} title={message.type === 'error' ? 'Матеріал потребує уваги' : 'Операцію виконано'}>
           {message.text}
-        </div>
+        </SystemAlert>
       )}
 
       {loadingFrom && <div className="border border-tile-blue bg-tile-blue/10 px-4 py-3 text-sm text-tile-blue">Завантаження посту-основи…</div>}
@@ -414,7 +479,7 @@ function ConstructorForm() {
         <div className="flex gap-3">
           <div className="flex-1">
             <label className="lbl">Заголовок</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="fld" placeholder="Необов'язково" />
+            <input id="post-title" value={title} onChange={(e) => setTitle(e.target.value)} className="fld" placeholder="Необов'язково" />
           </div>
           <div className="w-32">
             <label className="lbl">Мова</label>
@@ -427,8 +492,12 @@ function ConstructorForm() {
 
         <div>
           <label className="lbl">Текст посту (Telegram Markdown)</label>
-          <textarea ref={contentRef} value={content} onChange={(e) => setContent(e.target.value)} rows={8}
-            className="fld font-mono resize-y" placeholder="*Жирний*, _курсив_, емодзі — все працює" />
+          <textarea id="post-content" ref={contentRef} value={content} onChange={(e) => setContent(e.target.value)} rows={8}
+            aria-invalid={errorIds.has('post-content')}
+            className={`fld font-mono resize-y ${validationVisible && errorIds.has('post-content') ? 'fld-error' : ''}`} placeholder="*Жирний*, _курсив_, емодзі — все працює" />
+          {validationVisible && errorIds.has('post-content') && (
+            <p className="field-error">Потрібен валідний текст у межах Telegram-ліміту.</p>
+          )}
           <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
             <p className={`text-[10px] font-mono uppercase tracking-wider ${content.length > contentLimit ? 'text-tile-rose font-bold' : 'text-tile-coal/45'}`}>
               {content.length} / {contentLimit} символів{content.length > contentLimit ? ' · перевищено ліміт Telegram' : ''}
@@ -445,7 +514,9 @@ function ConstructorForm() {
         <div className="space-y-2">
           <label className="lbl">Зображення (URL)</label>
           <div className="flex gap-2">
-            <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="fld flex-1" placeholder="https://..." />
+            <input id="image-url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
+              aria-invalid={errorIds.has('image-url')}
+              className={`fld flex-1 ${validationVisible && errorIds.has('image-url') ? 'fld-error' : ''}`} placeholder="https://..." />
             <button type="button" onClick={() => setShowMediaPicker(true)} className="btn-line whitespace-nowrap">🖼️ З бібліотеки</button>
           </div>
           {imageUrl && (
@@ -490,7 +561,9 @@ function ConstructorForm() {
 
         <div>
           <label className="lbl">CTA посилання (за замовчуванням для кнопок)</label>
-          <input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} className="fld" placeholder="https://..." />
+          <input id="cta-url" value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)}
+            aria-invalid={errorIds.has('cta-url')}
+            className={`fld ${validationVisible && errorIds.has('cta-url') ? 'fld-error' : ''}`} placeholder="https://..." />
         </div>
 
         {/* Buttons constructor */}
@@ -502,8 +575,12 @@ function ConstructorForm() {
           <div className="space-y-2">
             {buttons.map((b, i) => (
               <div key={i} className="flex gap-2 items-center">
-                <input value={b.text} onChange={(e) => updateButton(i, 'text', e.target.value)} placeholder="Текст кнопки" className="fld flex-1" />
-                <input value={b.url} onChange={(e) => updateButton(i, 'url', e.target.value)} placeholder="https://..." className="fld flex-[2]" />
+                <input id={`button-text-${i}`} value={b.text} onChange={(e) => updateButton(i, 'text', e.target.value)}
+                  aria-invalid={errorIds.has(`button-text-${i}`)}
+                  placeholder="Текст кнопки" className={`fld flex-1 ${validationVisible && errorIds.has(`button-text-${i}`) ? 'fld-error' : ''}`} />
+                <input id={`button-url-${i}`} value={b.url} onChange={(e) => updateButton(i, 'url', e.target.value)}
+                  aria-invalid={errorIds.has(`button-url-${i}`)}
+                  placeholder="https://..." className={`fld flex-[2] ${validationVisible && errorIds.has(`button-url-${i}`) ? 'fld-error' : ''}`} />
                 <button type="button" onClick={() => removeButton(i)} className="text-white/40 hover:text-tile-rose px-2">✕</button>
               </div>
             ))}
@@ -515,12 +592,16 @@ function ConstructorForm() {
         {isPollType && (
           <div className="bg-white/5 p-4 space-y-3">
             <p className="panel-label">📊 Опитування</p>
-            <input value={pollQuestion} onChange={(e) => setPollQuestion(e.target.value)} placeholder="Питання" className="fld" />
+            <input id="poll-question" value={pollQuestion} onChange={(e) => setPollQuestion(e.target.value)}
+              aria-invalid={errorIds.has('poll-question')}
+              placeholder="Питання" className={`fld ${validationVisible && errorIds.has('poll-question') ? 'fld-error' : ''}`} />
             <div className="space-y-2">
               {pollOptions.map((opt, i) => (
                 <div key={i} className="flex gap-2 items-center">
                   <span className="w-6 h-6 bg-white/10 flex items-center justify-center text-xs text-white/70">{i + 1}</span>
-                  <input value={opt} onChange={(e) => updateOption(i, e.target.value)} placeholder={`Варіант ${i + 1}`} className="fld flex-1" />
+                  <input id={`poll-option-${i}`} value={opt} onChange={(e) => updateOption(i, e.target.value)}
+                    aria-invalid={i === 0 && errorIds.has('poll-option-0')}
+                    placeholder={`Варіант ${i + 1}`} className={`fld flex-1 ${validationVisible && i === 0 && errorIds.has('poll-option-0') ? 'fld-error' : ''}`} />
                   {pollOptions.length > 2 && (
                     <button type="button" onClick={() => removeOption(i)} className="text-white/40 hover:text-tile-rose px-2">✕</button>
                   )}
@@ -537,11 +618,15 @@ function ConstructorForm() {
           </div>
         )}
 
-        <ChannelPicker value={channelIds} onChange={setChannelIds} />
+        <div id="channel-picker" tabIndex={-1}>
+          <ChannelPicker value={channelIds} onChange={setChannelIds} />
+        </div>
 
         <div>
           <label className="lbl">Запланувати на</label>
-          <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="fld w-auto" />
+          <input id="scheduled-at" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)}
+            aria-invalid={errorIds.has('scheduled-at')}
+            className={`fld w-auto ${validationVisible && errorIds.has('scheduled-at') ? 'fld-error' : ''}`} />
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" onClick={() => scheduleAfter(1)} className="btn-ghost !px-0">Через 1 год</button>
             <button type="button" onClick={() => scheduleAfter(3)} className="btn-ghost">Через 3 год</button>
@@ -588,7 +673,41 @@ function ConstructorForm() {
       </div>
         </section>
 
-        <aside className="xl:sticky xl:top-24">
+        <aside className="space-y-4 xl:sticky xl:top-28">
+          <div className={`border ${errorCount ? 'border-tile-rose bg-tile-rose/5' : 'border-tile-coal bg-[#fffdf9]'}`}>
+            <div className="flex items-center justify-between border-b border-current/20 px-5 py-4">
+              <div>
+                <p className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] opacity-55">Preflight validation</p>
+                <h2 className="mt-1 text-2xl font-bold">Перевірка матеріалу</h2>
+              </div>
+              <span className={`flex h-11 min-w-11 items-center justify-center rounded-full border-2 font-mono text-sm font-bold ${
+                errorCount ? 'border-tile-rose text-tile-rose' : warningCount ? 'border-[#a76b22] text-[#744714]' : 'border-[#668075] text-[#527064]'
+              }`}>
+                {errorCount || warningCount || 'OK'}
+              </span>
+            </div>
+            {validationIssues.length === 0 ? (
+              <p className="p-5 text-sm font-semibold text-[#527064]">Матеріал готовий до передачі у workflow.</p>
+            ) : (
+              <div className="divide-y divide-tile-coal/15">
+                {validationIssues.map((issue) => (
+                  <button
+                    key={issue.id}
+                    type="button"
+                    onClick={() => focusIssue(issue.fieldId)}
+                    className="grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 p-4 text-left transition-colors hover:bg-white/60"
+                  >
+                    <span className={`mt-1 h-2.5 w-2.5 rounded-full ${issue.severity === 'error' ? 'bg-tile-rose' : 'bg-[#b47a31]'}`} />
+                    <span>
+                      <span className="block text-sm font-bold">{issue.title}</span>
+                      <span className="mt-1 block text-xs leading-relaxed opacity-60">{issue.detail}</span>
+                    </span>
+                    <span className="font-mono text-[9px] font-bold uppercase tracking-wider opacity-45">Fix →</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <TelegramPreview
             title={title}
             content={content}

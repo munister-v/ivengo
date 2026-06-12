@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { api, type Channel, type ChannelValidation } from '@/lib/api'
+import { SystemAlert } from '@/components/SystemAlert'
 
 const emptyForm = { name: '', chatId: '', botToken: '', description: '', isActive: true, premiumEmoji: false }
 
@@ -200,7 +201,11 @@ export default function ChannelsPage() {
             <button type="button" onClick={validate} disabled={validating} className="btn-line">
               {validating ? 'Перевірка...' : '🔍 Перевірити підключення'}
             </button>
-            {validationError && <p className="text-sm text-white bg-tile-rose px-3 py-2">{validationError}</p>}
+            {validationError && (
+              <SystemAlert tone="error" title="Канал не пройшов перевірку">
+                {validationError}. Перевірте токен бота, chat ID і права адміністратора.
+              </SystemAlert>
+            )}
             {validation && (
               <div className={`text-sm px-3 py-2 ${validation.canPost === false ? 'bg-tile-rose text-white' : 'bg-tile-teal/20 text-white'}`}>
                 <p>🤖 Бот: <span className="font-mono">@{validation.bot.username ?? validation.bot.name}</span></p>
@@ -215,7 +220,11 @@ export default function ChannelsPage() {
             )}
           </div>
 
-          {error && <p className="text-sm text-white bg-tile-rose px-3 py-2">{error}</p>}
+          {error && (
+            <SystemAlert tone="error" title="Налаштування не збережено">
+              {error}. Виправте дані каналу та повторіть.
+            </SystemAlert>
+          )}
           <div className="flex gap-2 pt-1">
             <button onClick={save} disabled={saving} className="btn">{saving ? 'Збереження...' : 'Зберегти'}</button>
             <button onClick={() => setShowForm(false)} className="btn-ghost">Скасувати</button>
