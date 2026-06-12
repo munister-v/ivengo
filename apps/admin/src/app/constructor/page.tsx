@@ -5,6 +5,7 @@ import { api, type Post, type MediaAsset } from '@/lib/api'
 import { ChannelPicker } from '@/components/ChannelPicker'
 import { ImageGenerator } from '@/components/ImageGenerator'
 import { PremiumEmojiBar } from '@/components/PremiumEmojiBar'
+import { AiTextTools } from '@/components/AiTextTools'
 import { TEMPLATES, TEMPLATE_GROUPS } from './templates'
 
 const TYPES = [
@@ -146,6 +147,14 @@ function ConstructorForm() {
       notify('Заповніть питання та мінімум 2 варіанти відповіді', 'error')
       return
     }
+    if (asScheduled && !scheduledAt) {
+      notify('Оберіть дату та час у полі «Запланувати на» — або натисніть «На ревʼю», щоб зберегти чернетку', 'error')
+      return
+    }
+    if (asScheduled && new Date(scheduledAt).getTime() < Date.now()) {
+      notify('Дата публікації вже минула — оберіть час у майбутньому', 'error')
+      return
+    }
     setSaving(true)
     try {
       const validButtons = buttons.filter((b) => b.text.trim() && b.url.trim())
@@ -273,7 +282,17 @@ function ConstructorForm() {
           <label className="lbl">Текст посту (Telegram Markdown)</label>
           <textarea ref={contentRef} value={content} onChange={(e) => setContent(e.target.value)} rows={8}
             className="fld font-mono resize-y" placeholder="*Жирний*, _курсив_, емодзі — все працює" />
+          <div className="flex items-center justify-between gap-2 mt-1 flex-wrap">
+            <p className={`text-xs font-mono ${content.length > (imageUrl ? 1024 : 4096) ? 'text-tile-rose font-bold' : 'text-white/40'}`}>
+              {content.length} / {imageUrl ? 1024 : 4096} символів{content.length > (imageUrl ? 1024 : 4096) ? ' — перевищено ліміт Telegram!' : ''}
+            </p>
+            <button type="button" onClick={() => { navigator.clipboard?.writeText(content); notify('Скопійовано') }}
+              className="text-xs text-white/50 hover:text-white font-mono uppercase tracking-wider">📋 Копіювати</button>
+          </div>
           <PremiumEmojiBar textareaRef={contentRef} setContent={setContent} />
+          <div className="mt-2">
+            <AiTextTools text={content} language={language as 'uk' | 'ru'} onResult={setContent} notify={notify} />
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -374,8 +393,13 @@ function ConstructorForm() {
         <ChannelPicker value={channelIds} onChange={setChannelIds} />
 
         <div>
-          <label className="lbl">Запланувати на (необов&apos;язково)</label>
+          <label className="lbl">Запланувати на</label>
           <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="fld w-auto" />
+          <p className="text-xs text-white/40 mt-1">
+            {scheduledAt
+              ? '⏰ Натисніть «Запланувати публікацію» — пост вийде у вказаний час.'
+              : 'Оберіть дату й час, щоб активувати кнопку «Запланувати публікацію». Без дати — збережіть на ревʼю.'}
+          </p>
         </div>
 
         {/* A/B testing */}
@@ -404,7 +428,7 @@ function ConstructorForm() {
           <button onClick={() => save(false)} disabled={saving} className="btn-line">
             {saving ? 'Збереження...' : '💾 На ревʼю (чернетка)'}
           </button>
-          <button onClick={() => save(true)} disabled={saving || !scheduledAt} className="btn">
+          <button onClick={() => save(true)} disabled={saving} className={`btn ${!scheduledAt ? 'opacity-60' : ''}`}>
             {saving ? 'Збереження...' : '⏰ Запланувати публікацію'}
           </button>
         </div>

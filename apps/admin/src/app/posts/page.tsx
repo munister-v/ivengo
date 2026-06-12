@@ -49,7 +49,7 @@ export default function PostsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="page-title">Пости <span className="text-tile-coal/40 font-normal text-lg">({total})</span></h1>
-        <Link href="/posts/new" className="btn-coal">+ Новий пост</Link>
+        <Link href="/constructor" className="btn-coal">+ Новий пост</Link>
       </div>
 
       {/* Filters — coal bar */}

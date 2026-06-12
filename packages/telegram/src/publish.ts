@@ -31,7 +31,10 @@ export async function publishPostToChannel(config: TelegramConfig, post: Publish
 
   if ((post.type === 'poll' || post.type === 'engagement_poll') && post.poll) {
     const msg = await client.sendPoll(post.poll.question, post.poll.options, {
-      isAnonymous: post.poll.isAnonymous,
+      // Telegram channels (broadcast chats) reject non-anonymous polls/quizzes
+      // with "Bad Request: non-anonymous polls can't be sent to channel chats" —
+      // force anonymous regardless of what the AI generated.
+      isAnonymous: true,
       allowsMultipleAnswers: post.poll.allowsMultipleAnswers,
       correctOptionId: post.poll.correctOptionId ?? undefined,
     })

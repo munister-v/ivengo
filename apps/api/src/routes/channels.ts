@@ -123,8 +123,30 @@ export async function channelsRoutes(app: FastifyInstance) {
       await client.sendMessage('✅ Тест підключення Ivengo Bot пройшов успішно!')
       return { success: true }
     } catch (err: unknown) {
-      const error = err instanceof Error ? err.message : String(err)
-      return reply.status(500).send({ error })
+      const raw = err instanceof Error ? err.message : String(err)
+      return reply.status(500).send({ error: explainTelegramError(raw) })
     }
   })
+}
+
+/**
+ * Turns a raw Telegram Bot API error into an actionable Ukrainian hint. The bare
+ * "Bad Request" Telegram returns is useless to the user, so we map the common
+ * causes (bot not in channel, not an admin, wrong chat id) to concrete fixes.
+ */
+function explainTelegramError(raw: string): string {
+  const lower = raw.toLowerCase()
+  if (lower.includes('chat not found')) {
+    return 'Канал не знайдено. Перевірте Chat ID (@username або числовий -100…) і переконайтесь, що бот доданий до каналу.'
+  }
+  if (lower.includes('bot is not a member') || lower.includes('bot was kicked') || lower.includes('not enough rights') || lower.includes('need administrator') || lower.includes("can't post") || lower.includes('chat_admin_required')) {
+    return 'Бот не має прав публікувати у цьому каналі. Додайте бота адміністратором каналу з правом «Публікація повідомлень».'
+  }
+  if (lower.includes('unauthorized') || lower.includes('401')) {
+    return 'Невірний токен бота. Скопіюйте токен заново з @BotFather.'
+  }
+  if (lower.includes('bad request')) {
+    return `${raw} — найчастіша причина: бот ще не доданий адміністратором каналу. Додайте його в адміни і повторіть.`
+  }
+  return raw
 }

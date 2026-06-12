@@ -7,7 +7,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      // Only set Content-Type when there's an actual body — Fastify rejects
+      // POST/PATCH requests that declare application/json but send no body
+      // (e.g. approve/publish) with a 400 "Body cannot be empty" error.
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -74,6 +77,11 @@ export const api = {
     }),
   checkCompliance: (id: string) =>
     request<ComplianceResult>(`/api/posts/${id}/compliance`, { method: 'POST' }),
+  rewriteText: (data: { text: string; instruction: string; language: 'uk' | 'ru' }) =>
+    request<{ text: string }>('/api/posts/rewrite', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   // Batches
   generateBatch: (data: GenerateRequest) =>
@@ -116,7 +124,7 @@ export const api = {
   createMedia: (data: { url: string; name?: string; tags?: string }) =>
     request<MediaAsset>('/api/media', { method: 'POST', body: JSON.stringify(data) }),
   deleteMedia: (id: string) => request<void>(`/api/media/${id}`, { method: 'DELETE' }),
-  generateImage: (data: { prompt: string; width?: number; height?: number; seed?: number }) =>
+  generateImage: (data: { prompt: string; width?: number; height?: number; negativePrompt?: string; model?: string }) =>
     request<{ url: string; prompt: string }>('/api/media/generate-image', {
       method: 'POST',
       body: JSON.stringify(data),

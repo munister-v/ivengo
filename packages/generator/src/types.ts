@@ -54,3 +54,13 @@ export interface GenerationResult {
   posts: GeneratedPost[]
   batchId?: string
 }
+
+/** A one-shot text transform on an existing post (improve, shorten, translate, …). */
+export interface RewriteRequest {
+  /** The current post text to transform. */
+  text: string
+  /** Natural-language instruction, e.g. "make it shorter" or "translate to Russian". */
+  instruction: string
+  /** Target/source language for the result. */
+  language: Language
+}

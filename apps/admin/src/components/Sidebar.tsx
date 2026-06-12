@@ -6,10 +6,10 @@ import { removeToken } from '@/lib/auth'
 
 const nav = [
   { href: '/', label: 'Dashboard', icon: '◆' },
-  { href: '/calendar', label: 'Календар', icon: '▦' },
-  { href: '/posts', label: 'Пости', icon: '✎' },
   { href: '/constructor', label: 'Конструктор', icon: '⚒' },
   { href: '/generate', label: 'Генерація', icon: '✦' },
+  { href: '/calendar', label: 'Календар', icon: '▦' },
+  { href: '/posts', label: 'Пости', icon: '✎' },
   { href: '/ab', label: 'A/B Тести', icon: '⚗' },
   { href: '/media', label: 'Медіа', icon: '▣' },
   { href: '/channels', label: 'Канали', icon: '⛓' },

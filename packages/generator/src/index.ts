@@ -8,6 +8,7 @@ export type {
   GenerationRequest,
   GeneratedPost,
   GenerationResult,
+  RewriteRequest,
   ContentType,
   Language,
   Tone,

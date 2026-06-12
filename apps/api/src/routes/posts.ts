@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@ivengo/db'
 import { checkCompliance } from '@ivengo/compliance'
 import { publishPostToChannel } from '@ivengo/telegram'
+import { createAdapter } from '@ivengo/generator'
 import { authenticate } from '../plugins/auth'
 
 const ALL_TYPES = [
@@ -40,8 +41,29 @@ const updatePostSchema = createPostSchema.partial().extend({
   status: z.enum(['draft', 'pending_review', 'approved', 'scheduled', 'rejected']).optional(),
 })
 
+const rewriteSchema = z.object({
+  text: z.string().min(2, 'Немає тексту для покращення').max(8000),
+  instruction: z.string().min(2).max(400),
+  language: z.enum(['uk', 'ru']).default('uk'),
+})
+
 export async function postsRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authenticate)
+
+  // POST /api/posts/rewrite — AI text transform (improve / shorten / translate / …)
+  // Operates on raw text (not a saved post) so it works on unsaved edits too.
+  // Goes through the same bulletproof auto-switcher as generation.
+  app.post('/rewrite', async (req, reply) => {
+    const body = rewriteSchema.parse(req.body)
+    try {
+      const adapter = createAdapter()
+      const text = await adapter.rewrite(body)
+      return { text }
+    } catch (e) {
+      app.log.error({ err: e }, 'AI rewrite failed')
+      return reply.status(502).send({ error: e instanceof Error ? e.message : 'AI rewrite failed' })
+    }
+  })
 
   // GET /api/posts
   app.get('/', async (req) => {
