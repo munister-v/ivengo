@@ -1,5 +1,5 @@
 'use client'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { api, type Post, type MediaAsset } from '@/lib/api'
 import { ChannelPicker } from '@/components/ChannelPicker'
@@ -21,6 +21,26 @@ const TYPES = [
 ]
 
 interface ButtonRow { text: string; url: string }
+
+const DRAFT_KEY = 'ivengo_constructor_draft_v2'
+
+interface LocalDraft {
+  savedAt: string
+  title: string
+  content: string
+  type: string
+  language: string
+  imageUrl: string
+  ctaUrl: string
+  buttons: ButtonRow[]
+  pollQuestion: string
+  pollOptions: string[]
+  pollAnonymous: boolean
+  scheduledAt: string
+  channelIds: string[]
+  abVariant: string
+  abGroupId: string
+}
 
 export default function ConstructorPage() {
   return (
@@ -55,16 +75,100 @@ function ConstructorForm() {
   const [abVariant, setAbVariant] = useState('')
   const [abGroupId, setAbGroupId] = useState('')
   const [sourcePostId, setSourcePostId] = useState('')
+  const [recoverableDraft, setRecoverableDraft] = useState<LocalDraft | null>(null)
+  const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const autosaveReady = useRef(false)
 
   useEffect(() => {
     api.getMedia().then(setMediaAssets).catch(() => setMediaAssets([]))
+    if (!searchParams.get('from')) {
+      try {
+        const stored = localStorage.getItem(DRAFT_KEY)
+        if (stored) setRecoverableDraft(JSON.parse(stored) as LocalDraft)
+      } catch {
+        localStorage.removeItem(DRAFT_KEY)
+      }
+    }
+    const timer = setTimeout(() => { autosaveReady.current = true }, 600)
+    return () => clearTimeout(timer)
   }, [])
 
   const isPollType = type === 'poll' || type === 'engagement_poll'
+  const contentLimit = imageUrl ? 1024 : 4096
+  const completion = useMemo(() => {
+    const checks = [
+      content.trim().length > 20,
+      Boolean(title.trim()),
+      Boolean(imageUrl),
+      channelIds.length > 0,
+      buttons.some((button) => button.text.trim() && button.url.trim()),
+      !isPollType || (pollQuestion.trim().length > 0 && pollOptions.filter((option) => option.trim()).length >= 2),
+    ]
+    return Math.round((checks.filter(Boolean).length / checks.length) * 100)
+  }, [buttons, channelIds.length, content, imageUrl, isPollType, pollOptions, pollQuestion, title])
+
+  useEffect(() => {
+    if (!autosaveReady.current || recoverableDraft) return
+    setAutosaveState('saving')
+    const timer = setTimeout(() => {
+      const draft: LocalDraft = {
+        savedAt: new Date().toISOString(),
+        title,
+        content,
+        type,
+        language,
+        imageUrl,
+        ctaUrl,
+        buttons,
+        pollQuestion,
+        pollOptions,
+        pollAnonymous,
+        scheduledAt,
+        channelIds,
+        abVariant,
+        abGroupId,
+      }
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+      setAutosaveState('saved')
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [abGroupId, abVariant, buttons, channelIds, content, ctaUrl, imageUrl, language, pollAnonymous, pollOptions, pollQuestion, recoverableDraft, scheduledAt, title, type])
 
   function notify(text: string, t: 'success' | 'error' = 'success') {
     setMessage({ text, type: t })
     setTimeout(() => setMessage(null), 4000)
+  }
+
+  function restoreDraft() {
+    if (!recoverableDraft) return
+    const draft = recoverableDraft
+    setTitle(draft.title)
+    setContent(draft.content)
+    setType(draft.type)
+    setLanguage(draft.language)
+    setImageUrl(draft.imageUrl)
+    setCtaUrl(draft.ctaUrl)
+    setButtons(draft.buttons)
+    setPollQuestion(draft.pollQuestion)
+    setPollOptions(draft.pollOptions)
+    setPollAnonymous(draft.pollAnonymous)
+    setScheduledAt(draft.scheduledAt)
+    setChannelIds(draft.channelIds)
+    setAbVariant(draft.abVariant)
+    setAbGroupId(draft.abGroupId)
+    setRecoverableDraft(null)
+    notify('Локальний чернетковий сеанс відновлено')
+  }
+
+  function discardDraft() {
+    localStorage.removeItem(DRAFT_KEY)
+    setRecoverableDraft(null)
+  }
+
+  function scheduleAfter(hours: number) {
+    const date = new Date(Date.now() + hours * 60 * 60 * 1000)
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+    setScheduledAt(local)
   }
 
   function applyPost(p: Post) {
@@ -143,6 +247,11 @@ function ConstructorForm() {
 
   async function save(asScheduled: boolean) {
     if (!content.trim()) { notify('Введіть текст посту', 'error'); return }
+    if (content.length > contentLimit) {
+      notify(`Скоротіть текст до ${contentLimit} символів${imageUrl ? ' для посту із зображенням' : ''}`, 'error')
+      contentRef.current?.focus()
+      return
+    }
     if (isPollType && (!pollQuestion.trim() || pollOptions.filter((o) => o.trim()).length < 2)) {
       notify('Заповніть питання та мінімум 2 варіанти відповіді', 'error')
       return
@@ -195,6 +304,7 @@ function ConstructorForm() {
         }
       }
       notify('Пост створено')
+      localStorage.removeItem(DRAFT_KEY)
       router.push(`/posts/${post.id}`)
     } catch (e: unknown) {
       notify(e instanceof Error ? e.message : 'Помилка створення', 'error')
@@ -204,19 +314,47 @@ function ConstructorForm() {
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
-      <div>
-        <h1 className="page-title">🛠️ Конструктор посту</h1>
-        <p className="page-sub mt-1">Зберіть пост вручну: текст, зображення, inline-кнопки, опитування — і поставте у чергу або на ревʼю.</p>
-      </div>
+    <div className="space-y-7">
+      <header className="grid gap-5 border-b border-tile-coal/30 pb-7 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <p className="eyebrow mb-3">Editorial studio · New material</p>
+          <h1 className="page-title">Конструктор посту</h1>
+          <p className="page-sub mt-3 max-w-2xl">Зберіть матеріал, перевірте його у Telegram-превʼю та передайте на ревʼю або заплануйте публікацію.</p>
+        </div>
+        <div className="flex items-center gap-4 border border-tile-coal/30 bg-[#fffdf9] px-4 py-3">
+          <div className="relative flex h-12 w-12 items-center justify-center rounded-full border border-tile-coal/30">
+            <span className="text-sm font-mono">{completion}%</span>
+          </div>
+          <div>
+            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-tile-coal/45">Готовність</p>
+            <p className="mt-1 text-sm">{completion >= 80 ? 'Майже готово' : completion >= 50 ? 'Потрібні деталі' : 'Почніть з тексту'}</p>
+          </div>
+        </div>
+      </header>
 
       {message && (
-        <div className={`px-4 py-3 text-sm font-medium ${message.type === 'success' ? 'bg-tile-teal text-tile-coal' : 'bg-tile-rose text-white'}`}>
+        <div role="status" aria-live="polite" className={`border px-4 py-3 text-sm ${message.type === 'success' ? 'border-tile-teal bg-tile-teal/30 text-tile-coal' : 'border-tile-rose bg-tile-rose/10 text-tile-rose'}`}>
           {message.text}
         </div>
       )}
 
-      {loadingFrom && <div className="px-4 py-3 text-sm bg-tile-blue text-white">Завантаження посту-основи...</div>}
+      {loadingFrom && <div className="border border-tile-blue bg-tile-blue/10 px-4 py-3 text-sm text-tile-blue">Завантаження посту-основи…</div>}
+
+      {recoverableDraft && (
+        <div className="grid gap-4 border border-tile-coal bg-tile-pink/25 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div>
+            <p className="eyebrow">Unsaved session found</p>
+            <p className="mt-2 text-lg">Знайдено локальний чернетковий сеанс від {new Date(recoverableDraft.savedAt).toLocaleString('uk-UA')}.</p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={discardDraft} className="btn-ghost">Видалити</button>
+            <button type="button" onClick={restoreDraft} className="btn">Відновити</button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(360px,0.82fr)]">
+        <section className="min-w-0 space-y-5">
 
       {similar.length > 0 && (
         <div className="panel-pad space-y-3">
@@ -256,7 +394,16 @@ function ConstructorForm() {
         ))}
       </div>
 
-      <div className="panel-pad space-y-4">
+      <div className="panel-pad space-y-6">
+        <div className="flex items-center justify-between border-b border-tile-coal/15 pb-4">
+          <div>
+            <p className="panel-label">Material settings</p>
+            <h2 className="mt-2 text-2xl">Основний матеріал</h2>
+          </div>
+          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-tile-coal/45">
+            {autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Saved locally' : 'Autosave ready'}
+          </p>
+        </div>
         <div>
           <label className="lbl">Тип посту</label>
           <select value={type} onChange={(e) => setType(e.target.value)} className="fld">
@@ -282,12 +429,12 @@ function ConstructorForm() {
           <label className="lbl">Текст посту (Telegram Markdown)</label>
           <textarea ref={contentRef} value={content} onChange={(e) => setContent(e.target.value)} rows={8}
             className="fld font-mono resize-y" placeholder="*Жирний*, _курсив_, емодзі — все працює" />
-          <div className="flex items-center justify-between gap-2 mt-1 flex-wrap">
-            <p className={`text-xs font-mono ${content.length > (imageUrl ? 1024 : 4096) ? 'text-tile-rose font-bold' : 'text-white/40'}`}>
-              {content.length} / {imageUrl ? 1024 : 4096} символів{content.length > (imageUrl ? 1024 : 4096) ? ' — перевищено ліміт Telegram!' : ''}
+          <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
+            <p className={`text-[10px] font-mono uppercase tracking-wider ${content.length > contentLimit ? 'text-tile-rose font-bold' : 'text-tile-coal/45'}`}>
+              {content.length} / {contentLimit} символів{content.length > contentLimit ? ' · перевищено ліміт Telegram' : ''}
             </p>
             <button type="button" onClick={() => { navigator.clipboard?.writeText(content); notify('Скопійовано') }}
-              className="text-xs text-white/50 hover:text-white font-mono uppercase tracking-wider">📋 Копіювати</button>
+              className="btn-ghost !px-0">Копіювати</button>
           </div>
           <PremiumEmojiBar textareaRef={contentRef} setContent={setContent} />
           <div className="mt-2">
@@ -395,9 +542,15 @@ function ConstructorForm() {
         <div>
           <label className="lbl">Запланувати на</label>
           <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="fld w-auto" />
-          <p className="text-xs text-white/40 mt-1">
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" onClick={() => scheduleAfter(1)} className="btn-ghost !px-0">Через 1 год</button>
+            <button type="button" onClick={() => scheduleAfter(3)} className="btn-ghost">Через 3 год</button>
+            <button type="button" onClick={() => scheduleAfter(24)} className="btn-ghost">Завтра</button>
+            {scheduledAt && <button type="button" onClick={() => setScheduledAt('')} className="btn-ghost text-tile-rose">Очистити</button>}
+          </div>
+          <p className="text-xs text-tile-coal/45 mt-2">
             {scheduledAt
-              ? '⏰ Натисніть «Запланувати публікацію» — пост вийде у вказаний час.'
+              ? `Публікація запланована на ${new Date(scheduledAt).toLocaleString('uk-UA')}.`
               : 'Оберіть дату й час, щоб активувати кнопку «Запланувати публікацію». Без дати — збережіть на ревʼю.'}
           </p>
         </div>
@@ -424,13 +577,103 @@ function ConstructorForm() {
           </div>
         </div>
 
-        <div className="flex gap-3 pt-2 flex-wrap">
-          <button onClick={() => save(false)} disabled={saving} className="btn-line">
-            {saving ? 'Збереження...' : '💾 На ревʼю (чернетка)'}
+        <div className="sticky bottom-3 z-20 -mx-2 flex flex-wrap gap-3 border border-tile-coal bg-[#fffdf9]/95 p-3 shadow-[0_14px_40px_rgba(80,26,44,0.14)] backdrop-blur">
+          <button onClick={() => save(false)} disabled={saving || content.length > contentLimit} className="btn-line flex-1">
+            {saving ? 'Збереження…' : 'Передати на ревʼю'}
           </button>
-          <button onClick={() => save(true)} disabled={saving} className={`btn ${!scheduledAt ? 'opacity-60' : ''}`}>
-            {saving ? 'Збереження...' : '⏰ Запланувати публікацію'}
+          <button onClick={() => save(true)} disabled={saving || !scheduledAt || content.length > contentLimit} className="btn flex-1">
+            {saving ? 'Збереження…' : 'Запланувати →'}
           </button>
+        </div>
+      </div>
+        </section>
+
+        <aside className="xl:sticky xl:top-24">
+          <TelegramPreview
+            title={title}
+            content={content}
+            imageUrl={imageUrl}
+            buttons={buttons}
+            pollQuestion={isPollType ? pollQuestion : ''}
+            pollOptions={isPollType ? pollOptions.filter(Boolean) : []}
+            scheduledAt={scheduledAt}
+          />
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function TelegramPreview({
+  title,
+  content,
+  imageUrl,
+  buttons,
+  pollQuestion,
+  pollOptions,
+  scheduledAt,
+}: {
+  title: string
+  content: string
+  imageUrl: string
+  buttons: ButtonRow[]
+  pollQuestion: string
+  pollOptions: string[]
+  scheduledAt: string
+}) {
+  const activeButtons = buttons.filter((button) => button.text.trim())
+
+  return (
+    <div className="overflow-hidden border border-tile-coal bg-tile-coal text-tile-amber">
+      <div className="flex items-center justify-between border-b border-tile-amber/25 px-5 py-4">
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-tile-amber/50">Live preview</p>
+          <h2 className="mt-1 text-xl">Telegram</h2>
+        </div>
+        <span className="h-2 w-2 rounded-full bg-tile-teal" />
+      </div>
+
+      <div className="bg-[#d9e7ee] p-4 sm:p-6">
+        <div className="ml-auto max-w-[92%] overflow-hidden rounded-[18px_18px_5px_18px] bg-[#fffdf9] text-tile-coal shadow-[0_10px_30px_rgba(39,56,65,0.16)]">
+          {imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="" className="aspect-[16/10] w-full object-cover" />
+          )}
+          <div className="p-4">
+            {title && <p className="mb-2 text-base font-semibold">{title}</p>}
+            <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+              {content || 'Текст посту з’явиться тут у реальному часі…'}
+            </p>
+            {pollQuestion && (
+              <div className="mt-4 border-t border-tile-coal/15 pt-3">
+                <p className="font-semibold">{pollQuestion}</p>
+                <div className="mt-2 space-y-1.5">
+                  {pollOptions.map((option) => (
+                    <div key={option} className="border border-[#5aa4d6] px-3 py-2 text-center text-sm text-[#2783bd]">{option}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {activeButtons.length > 0 && (
+              <div className="mt-4 grid gap-1.5">
+                {activeButtons.map((button, index) => (
+                  <div key={`${button.text}-${index}`} className="bg-[#e9f2f7] px-3 py-2 text-center text-sm font-medium text-[#2783bd]">{button.text}</div>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 text-right font-mono text-[9px] text-tile-coal/35">
+              {new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })} ✓✓
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 border-t border-tile-amber/25 font-mono text-[9px] uppercase tracking-[0.14em]">
+        <div className="border-r border-tile-amber/25 px-4 py-3 text-tile-amber/55">
+          {imageUrl ? 'Caption limit · 1024' : 'Text limit · 4096'}
+        </div>
+        <div className="px-4 py-3 text-right text-tile-amber/55">
+          {scheduledAt ? new Date(scheduledAt).toLocaleString('uk-UA') : 'Not scheduled'}
         </div>
       </div>
     </div>

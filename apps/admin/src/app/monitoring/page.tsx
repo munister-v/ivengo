@@ -36,41 +36,42 @@ export default function MonitoringPage() {
   if (loading) return <div className="eyebrow animate-pulse">Завантаження…</div>
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h1 className="page-title">🩺 Моніторинг</h1>
+    <div className="space-y-7">
+      <header className="flex flex-wrap items-end justify-between gap-5 border-b border-tile-coal/30 pb-7">
+        <div>
+          <p className="eyebrow mb-3">Operations desk · Live</p>
+          <h1 className="page-title">Моніторинг</h1>
+          <p className="page-sub mt-3">Стан сервісів, черга публікацій і останні помилки.</p>
+        </div>
         <button onClick={() => load(true)} disabled={refreshing}
-          className="text-sm text-tile-coal hover:text-tile-blue font-bold disabled:opacity-50">
-          {refreshing ? 'Оновлення...' : '🔄 Оновити'}
+          className="btn-coal min-h-11">
+          {refreshing ? 'Оновлення…' : 'Оновити'}
         </button>
-      </div>
+      </header>
 
-      {/* ── Mondrian tile grid ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-0 lg:[&>*]:border lg:[&>*]:border-white">
-        {/* ① Status — big tile */}
-        <div className={`lg:col-span-2 p-8 flex flex-col justify-center ${health?.ok ? 'bg-tile-blue text-white' : 'bg-tile-rose text-white'}`}>
-          <span className="text-xs font-mono uppercase tracking-widest opacity-70 mb-2">System Status</span>
-          <h2 className="text-3xl lg:text-4xl font-bold leading-tight mb-2">
+      <div className="grid border-l border-t border-tile-coal/35 lg:grid-cols-3">
+        <div className={`flex min-h-[260px] flex-col justify-between border-b border-r border-tile-coal/35 p-8 lg:col-span-2 ${health?.ok ? 'bg-tile-teal/45 text-tile-coal' : 'bg-tile-rose text-white'}`}>
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] opacity-65">System status</span>
+          <h2 className="max-w-2xl text-4xl font-normal leading-tight lg:text-6xl">
             {health?.ok ? 'Усі системи працюють' : 'Виявлені проблеми'}
           </h2>
-          <p className="text-sm opacity-80">
+          <p className="font-mono text-[9px] uppercase tracking-wider opacity-60">
             Оновлено: {health ? new Date(health.ts).toLocaleTimeString('uk-UA') : '—'}
           </p>
         </div>
 
-        {/* ② Health checks — coal tile */}
-        <div className="bg-tile-coal text-white p-6">
-          <div className="text-xs font-mono uppercase tracking-widest text-white/50 mb-3">Перевірки підключень</div>
-          <div className="space-y-3">
+        <div className="border-b border-r border-tile-coal/35 bg-[#fffdf9] p-6 text-tile-coal">
+          <div className="panel-label mb-5">Connection checks</div>
+          <div className="divide-y divide-tile-coal/15">
             {health?.checks.map((c) => (
-              <div key={c.name} className="flex items-center gap-3">
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.ok ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
+              <div key={c.name} className="flex items-center gap-3 py-3">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.ok ? 'bg-tile-teal' : 'bg-tile-rose'}`}></span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{c.name}</p>
-                  {c.detail && <p className="text-xs text-white/40 truncate">{c.detail}</p>}
+                  <p className="text-sm truncate">{c.name}</p>
+                  {c.detail && <p className="text-xs text-tile-coal/40 truncate">{c.detail}</p>}
                 </div>
                 {c.latencyMs !== undefined && (
-                  <span className="text-xs text-white/40 flex-shrink-0 font-mono">{c.latencyMs}ms</span>
+                  <span className="text-xs text-tile-coal/40 flex-shrink-0 font-mono">{c.latencyMs}ms</span>
                 )}
               </div>
             ))}
@@ -80,10 +81,10 @@ export default function MonitoringPage() {
         {/* ③–⑥ Queue stat tiles */}
         {queue && (
           <>
-            <TileStat label="Заплановано" value={queue.scheduled} bg="bg-tile-teal" text="text-tile-coal" />
-            <TileStat label="На ревʼю" value={queue.pendingReview} bg="bg-tile-pink" text="text-tile-coal" />
+            <TileStat label="Заплановано" value={queue.scheduled} bg="bg-[#fffdf9]" text="text-tile-coal" />
+            <TileStat label="На ревʼю" value={queue.pendingReview} bg="bg-tile-pink/35" text="text-tile-coal" />
             <TileStat label="Помилки" value={queue.failed} bg={queue.failed > 0 ? 'bg-tile-rose' : 'bg-tile-amber'} text={queue.failed > 0 ? 'text-white' : 'text-tile-coal'} />
-            <TileStat label="Прострочено" value={queue.overdue} bg={queue.overdue > 0 ? 'bg-tile-rose' : 'bg-tile-blue'} text={queue.overdue > 0 ? 'text-white' : 'text-white'} />
+            <TileStat label="Прострочено" value={queue.overdue} bg={queue.overdue > 0 ? 'bg-tile-rose' : 'bg-tile-coal'} text="text-white" />
           </>
         )}
       </div>
@@ -97,22 +98,23 @@ export default function MonitoringPage() {
       )}
 
       {/* Recent errors — coal tile */}
-      <div className="bg-tile-coal text-white p-6">
-        <div className="text-xs font-mono uppercase tracking-widest text-white/50 mb-3">Останні помилки публікації</div>
+      <div className="panel-pad">
+        <div className="panel-label mb-2">Error archive</div>
+        <h2 className="mb-5 text-2xl">Останні помилки публікації</h2>
         {errors.length === 0 ? (
-          <p className="text-sm text-white/60 text-center py-4">Помилок немає 🎉</p>
+          <p className="border border-tile-teal bg-tile-teal/20 py-5 text-center text-sm">Помилок немає</p>
         ) : (
           <div className="divide-y divide-white/10">
             {errors.map((e) => (
               <div key={e.id} className="py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <Link href={e.post ? `/posts/${e.post.id}` : '#'} className="text-sm font-medium hover:text-tile-pink truncate">
+                  <Link href={e.post ? `/posts/${e.post.id}` : '#'} className="text-sm hover:opacity-55 truncate">
                     {e.post?.title || e.post?.type || 'Пост видалено'}
                   </Link>
-                  <span className="text-xs text-white/40 flex-shrink-0 font-mono">{new Date(e.createdAt).toLocaleString('uk-UA')}</span>
+                  <span className="text-xs text-tile-coal/40 flex-shrink-0 font-mono">{new Date(e.createdAt).toLocaleString('uk-UA')}</span>
                 </div>
                 {e.error && <p className="text-xs text-rose-400 mt-1 truncate">{e.error}</p>}
-                {e.channel && <p className="text-xs text-white/40 mt-0.5">Канал: {e.channel.name}</p>}
+                {e.channel && <p className="text-xs text-tile-coal/40 mt-0.5">Канал: {e.channel.name}</p>}
               </div>
             ))}
           </div>
@@ -124,9 +126,9 @@ export default function MonitoringPage() {
 
 function TileStat({ label, value, bg, text }: { label: string; value: number; bg: string; text: string }) {
   return (
-    <div className={`${bg} ${text} p-6 flex flex-col justify-center min-h-[140px]`}>
-      <span className="text-xs font-mono uppercase tracking-widest opacity-60 mb-2">{label}</span>
-      <span className="text-4xl font-bold leading-none">{value}</span>
+    <div className={`${bg} ${text} flex min-h-[150px] flex-col justify-between border-b border-r border-tile-coal/35 p-6`}>
+      <span className="font-mono text-[9px] uppercase tracking-[0.18em] opacity-60">{label}</span>
+      <span className="text-5xl font-normal leading-none">{value}</span>
     </div>
   )
 }

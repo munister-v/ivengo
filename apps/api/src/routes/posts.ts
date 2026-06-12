@@ -67,11 +67,17 @@ export async function postsRoutes(app: FastifyInstance) {
 
   // GET /api/posts
   app.get('/', async (req) => {
-    const { status, type, language, page = '1', limit = '20' } = req.query as Record<string, string>
+    const { status, type, language, q, page = '1', limit = '20' } = req.query as Record<string, string>
     const where: Record<string, unknown> = {}
     if (status) where.status = status
     if (type) where.type = type
     if (language) where.language = language
+    if (q?.trim()) {
+      where.OR = [
+        { title: { contains: q.trim(), mode: 'insensitive' } },
+        { content: { contains: q.trim(), mode: 'insensitive' } },
+      ]
+    }
 
     const [posts, total] = await Promise.all([
       prisma.post.findMany({

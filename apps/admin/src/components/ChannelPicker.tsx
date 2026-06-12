@@ -35,16 +35,16 @@ export function ChannelPicker({
     <div>
       <label className="lbl">{label}</label>
       {loading ? (
-        <p className="text-xs text-white/40">Завантаження каналів…</p>
+        <p className="text-xs text-tile-coal/45">Завантаження каналів…</p>
       ) : channels.length === 0 ? (
-        <p className="text-xs text-white/40">Немає активних каналів. Додайте їх на сторінці «Канали».</p>
+        <p className="border border-tile-rose/40 bg-tile-rose/5 p-3 text-xs text-tile-rose">Немає активних каналів. Додайте їх на сторінці «Канали».</p>
       ) : (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => onChange([])}
-            className={`text-xs font-mono uppercase tracking-wider px-2.5 py-1.5 transition-colors ${
-              allSelected ? 'bg-tile-teal text-tile-coal' : 'bg-white/5 text-white/60 hover:bg-white/10'
+            className={`min-h-11 border px-3 py-2 text-left font-mono text-[9px] uppercase tracking-wider transition-colors ${
+              allSelected ? 'border-tile-coal bg-tile-coal text-tile-amber' : 'border-tile-coal/25 bg-[#fffdf9] text-tile-coal/60 hover:border-tile-coal'
             }`}
           >
             Усі активні ({channels.length})
@@ -56,8 +56,8 @@ export function ChannelPicker({
                 key={c.id}
                 type="button"
                 onClick={() => toggle(c.id)}
-                className={`text-xs px-2.5 py-1.5 transition-colors ${
-                  on ? 'bg-tile-pink text-tile-coal font-bold' : 'bg-white/5 text-white/70 hover:bg-white/10'
+                className={`min-h-11 border px-3 py-2 text-left text-sm transition-colors ${
+                  on ? 'border-tile-coal bg-tile-pink/45 text-tile-coal' : 'border-tile-coal/25 bg-[#fffdf9] text-tile-coal/65 hover:border-tile-coal'
                 }`}
               >
                 {on ? '✓ ' : ''}{c.name}
@@ -67,7 +67,7 @@ export function ChannelPicker({
         </div>
       )}
       {!allSelected && (
-        <p className="text-[11px] text-white/40 mt-1.5">Обрано {value.length} — пост піде лише в ці пабліки.</p>
+        <p className="mt-2 text-[11px] text-tile-coal/45">Обрано {value.length} — пост піде лише в ці канали.</p>
       )}
     </div>
   )

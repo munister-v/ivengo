@@ -22,14 +22,14 @@ interface Tool {
 // Quick one-tap transforms. Instructions are in English (models follow them
 // best) but always force the output language back to the post's language.
 const TOOLS: Tool[] = [
-  { key: 'improve', label: '✨ Покращити', instruction: () => 'Rewrite this post to be more engaging, vivid and persuasive while keeping the same meaning, length and all links.' },
-  { key: 'shorter', label: '✂️ Коротше', instruction: () => 'Make this post noticeably shorter and punchier (cut ~30-40%) while keeping the key hook, the offer and the call to action.' },
-  { key: 'longer', label: '📝 Детальніше', instruction: () => 'Expand this post with one or two extra vivid details/benefits, keeping it natural and not over-long.' },
-  { key: 'emoji', label: '😀 Більше емодзі', instruction: () => 'Add tasteful, relevant emoji to make the post more lively for Telegram. Do not overdo it — keep it readable.' },
-  { key: 'cta', label: '🎯 Сильніший заклик', instruction: () => 'Strengthen the call to action at the end so it feels more urgent and clickable, keeping any existing link.' },
-  { key: 'variant', label: '🔁 Інший варіант', instruction: () => 'Rewrite this post from a fresh angle with different wording and structure, same topic and offer.' },
-  { key: 'hashtags', label: '#️⃣ Хештеги', instruction: () => 'Append 3-5 relevant Telegram hashtags on a new line at the very end. Keep the rest of the post unchanged.' },
-  { key: 'translate', label: '🌐 Переклад', instruction: (lang) => (lang === 'uk'
+  { key: 'improve', label: 'Покращити', instruction: () => 'Rewrite this post to be more engaging, vivid and persuasive while keeping the same meaning, length and all links.' },
+  { key: 'shorter', label: 'Коротше', instruction: () => 'Make this post noticeably shorter and punchier (cut ~30-40%) while keeping the key hook, the offer and the call to action.' },
+  { key: 'longer', label: 'Детальніше', instruction: () => 'Expand this post with one or two extra vivid details/benefits, keeping it natural and not over-long.' },
+  { key: 'emoji', label: 'Додати емодзі', instruction: () => 'Add tasteful, relevant emoji to make the post more lively for Telegram. Do not overdo it — keep it readable.' },
+  { key: 'cta', label: 'Посилити CTA', instruction: () => 'Strengthen the call to action at the end so it feels more urgent and clickable, keeping any existing link.' },
+  { key: 'variant', label: 'Інший варіант', instruction: () => 'Rewrite this post from a fresh angle with different wording and structure, same topic and offer.' },
+  { key: 'hashtags', label: 'Хештеги', instruction: () => 'Append 3-5 relevant Telegram hashtags on a new line at the very end. Keep the rest of the post unchanged.' },
+  { key: 'translate', label: 'Переклад', instruction: (lang) => (lang === 'uk'
     ? 'Translate this whole post into Russian, keeping all Markdown formatting, emoji and links.'
     : 'Translate this whole post into Ukrainian, keeping all Markdown formatting, emoji and links.') },
 ]
@@ -63,7 +63,7 @@ export function AiTextTools({ text, language, onResult, notify }: AiTextToolsPro
       if (res.text && res.text.trim() && res.text.trim() !== before.trim()) {
         setPrev(before)
         onResult(res.text.trim())
-        report('Готово ✨ — текст оновлено')
+        report('Текст оновлено')
       } else {
         report('AI повернув той самий текст — спробуйте інший варіант', 'error')
       }
@@ -82,8 +82,14 @@ export function AiTextTools({ text, language, onResult, notify }: AiTextToolsPro
   }
 
   return (
-    <div className="bg-white/5 p-3 space-y-2 rounded">
-      <p className="eyebrow !text-white/40">🤖 AI-помічник тексту</p>
+    <div className="space-y-3 border border-tile-coal/20 bg-tile-amber/45 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="eyebrow">AI text desk</p>
+          <p className="mt-1 text-sm text-tile-coal/55">Перепишіть текст одним редакційним рухом.</p>
+        </div>
+        {busy && <span className="font-mono text-[9px] uppercase tracking-wider text-tile-coal/45">Processing</span>}
+      </div>
       <div className="flex flex-wrap gap-2">
         {TOOLS.map((t) => (
           <button
@@ -91,9 +97,9 @@ export function AiTextTools({ text, language, onResult, notify }: AiTextToolsPro
             type="button"
             onClick={() => run(t.key, t.instruction(language))}
             disabled={!!busy}
-            className="text-xs font-medium px-3 py-1.5 bg-white/10 hover:bg-tile-blue hover:text-white text-white/80 transition-colors disabled:opacity-40"
+            className="border border-tile-coal/25 bg-[#fffdf9] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.12em] text-tile-coal transition-colors hover:bg-tile-coal hover:text-tile-amber disabled:opacity-40"
           >
-            {busy === t.key ? '⏳ AI...' : t.label}
+            {busy === t.key ? 'AI…' : t.label}
           </button>
         ))}
         {prev != null && (
@@ -101,9 +107,9 @@ export function AiTextTools({ text, language, onResult, notify }: AiTextToolsPro
             type="button"
             onClick={undo}
             disabled={!!busy}
-            className="text-xs font-medium px-3 py-1.5 bg-tile-rose/80 hover:bg-tile-rose text-white transition-colors disabled:opacity-40"
+            className="border border-tile-rose px-3 py-2 font-mono text-[9px] uppercase tracking-[0.12em] text-tile-rose transition-colors hover:bg-tile-rose hover:text-white disabled:opacity-40"
           >
-            ↩ Відмінити
+            Відмінити
           </button>
         )}
       </div>
@@ -127,11 +133,11 @@ export function AiTextTools({ text, language, onResult, notify }: AiTextToolsPro
           disabled={!!busy || !custom.trim()}
           className="btn-line whitespace-nowrap text-xs"
         >
-          {busy === 'custom' ? '⏳' : 'Застосувати'}
+          {busy === 'custom' ? 'AI…' : 'Застосувати'}
         </button>
       </div>
 
-      {localMsg && <p className="text-xs text-white/60">{localMsg}</p>}
+      {localMsg && <p className="text-xs text-tile-coal/60">{localMsg}</p>}
     </div>
   )
 }

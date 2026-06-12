@@ -280,6 +280,7 @@ export interface PostFilters {
   status?: string
   type?: string
   language?: string
+  q?: string
   page?: number
   limit?: number
 }

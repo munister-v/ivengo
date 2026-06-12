@@ -28,65 +28,97 @@ export default function PostsPage() {
   const [status, setStatus] = useState('')
   const [type, setType] = useState('')
   const [language, setLanguage] = useState('')
+  const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [query])
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.getPosts({ status: status || undefined, type: type || undefined, language: language || undefined, page, limit: 20 })
+      const res = await api.getPosts({
+        status: status || undefined,
+        type: type || undefined,
+        language: language || undefined,
+        q: debouncedQuery || undefined,
+        page,
+        limit: 20,
+      })
       setPosts(res.posts)
       setTotal(res.total)
     } finally {
       setLoading(false)
     }
-  }, [status, type, language, page])
+  }, [status, type, language, debouncedQuery, page])
 
   useEffect(() => { load() }, [load])
 
   const totalPages = Math.ceil(total / 20)
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="page-title">Пости <span className="text-tile-coal/40 font-normal text-lg">({total})</span></h1>
-        <Link href="/constructor" className="btn-coal">+ Новий пост</Link>
-      </div>
+    <div className="space-y-7">
+      <header className="grid gap-5 border-b border-tile-coal/30 pb-7 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <p className="eyebrow mb-3">Editorial archive · {total} materials</p>
+          <h1 className="page-title">Пости</h1>
+          <p className="page-sub mt-3 max-w-xl">Знайдіть, перевірте або використайте попередній матеріал як основу нового.</p>
+        </div>
+        <Link href="/constructor" className="btn min-h-12 inline-flex items-center">Створити пост →</Link>
+      </header>
 
-      {/* Filters — coal bar */}
-      <div className="panel-pad flex gap-3 flex-wrap">
+      <div className="grid gap-3 border border-tile-coal/35 bg-[#fffdf9] p-4 lg:grid-cols-[1fr_auto_auto_auto]">
+        <label className="relative">
+          <span className="sr-only">Пошук постів</span>
+          <input
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setPage(1) }}
+            className="fld !border-tile-coal/25 !py-2"
+            placeholder="Пошук за заголовком або текстом…"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-xs text-tile-coal/45" aria-label="Очистити пошук">
+              Clear
+            </button>
+          )}
+        </label>
         <Select value={status} onChange={(v) => { setStatus(v); setPage(1) }} options={STATUSES} placeholder="Статус" />
         <Select value={type} onChange={(v) => { setType(v); setPage(1) }} options={TYPES} placeholder="Тип" labelMap={TYPE_LABELS} />
-        <Select value={language} onChange={(v) => { setLanguage(v); setPage(1) }} options={LANGS} placeholder="Мова" labelMap={{ uk: '🇺🇦 UA', ru: '🇷🇺 RU' }} />
+        <Select value={language} onChange={(v) => { setLanguage(v); setPage(1) }} options={LANGS} placeholder="Мова" labelMap={{ uk: 'UA', ru: 'RU' }} />
       </div>
 
       {loading ? (
         <div className="eyebrow animate-pulse">Завантаження…</div>
       ) : (
-        <div className="panel divide-y divide-white/10">
-          {posts.length === 0 && <p className="p-6 text-white/40 text-sm text-center">Нічого не знайдено</p>}
+        <div className="border-l border-t border-tile-coal/30 bg-[#fffdf9]">
+          {posts.length === 0 && <p className="border-b border-r border-tile-coal/30 p-10 text-center italic text-tile-coal/45">Нічого не знайдено</p>}
           {posts.map((post) => (
-            <div key={post.id} className="p-4 flex items-start gap-4 hover:bg-white/5 transition-colors">
+            <article key={post.id} className="group grid gap-5 border-b border-r border-tile-coal/30 p-5 transition-colors hover:bg-tile-amber lg:grid-cols-[1fr_auto] lg:items-center">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <div className="mb-3 flex items-center gap-2 flex-wrap">
                   <StatusBadge status={post.status} />
-                  <span className="text-xs text-white/40">{TYPE_LABELS[post.type] ?? post.type}</span>
-                  <span className="text-xs text-white/40">{post.language === 'uk' ? '🇺🇦' : '🇷🇺'}</span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-tile-coal/45">{TYPE_LABELS[post.type] ?? post.type}</span>
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-tile-coal/45">{post.language}</span>
                 </div>
-                <p className="text-sm font-medium text-white truncate">{post.title || post.content.slice(0, 80)}</p>
-                <p className="text-xs text-white/40 mt-0.5 font-mono">{new Date(post.createdAt).toLocaleString('uk-UA')}</p>
+                <h2 className="text-xl leading-snug">{post.title || post.content.slice(0, 100)}</h2>
+                <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-relaxed text-tile-coal/55">{post.content}</p>
+                <p className="mt-3 font-mono text-[9px] uppercase tracking-wider text-tile-coal/40">{new Date(post.createdAt).toLocaleString('uk-UA')}</p>
               </div>
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <Link href={`/posts/${post.id}`} className="text-sm text-tile-pink hover:text-tile-teal font-medium">
-                  Відкрити →
+              <div className="flex flex-wrap gap-2 lg:w-44 lg:flex-col">
+                <Link href={`/posts/${post.id}`} className="btn-coal text-center">
+                  Відкрити
                 </Link>
-                <Link href={`/constructor?from=${post.id}`} className="text-xs text-white/40 hover:text-white">
-                  🔁 Дублювати як шаблон
+                <Link href={`/constructor?from=${post.id}`} className="btn-ghost text-center">
+                  Дублювати
                 </Link>
-                <Link href={`/constructor?from=${post.id}&abGroupId=${post.abGroupId ?? post.id}&abVariant=B`} className="text-xs text-white/40 hover:text-white">
-                  🧪 Створити варіант B
+                <Link href={`/constructor?from=${post.id}&abGroupId=${post.abGroupId ?? post.id}&abVariant=B`} className="btn-ghost text-center">
+                  Варіант B
                 </Link>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
