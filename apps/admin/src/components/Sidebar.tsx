@@ -5,18 +5,18 @@ import { useState } from 'react'
 import { removeToken } from '@/lib/auth'
 
 const nav = [
-  { href: '/', label: 'Dashboard', icon: '◆' },
-  { href: '/calendar', label: 'Календар', icon: '▦' },
-  { href: '/posts', label: 'Пости', icon: '✎' },
-  { href: '/constructor', label: 'Конструктор', icon: '⚒' },
-  { href: '/generate', label: 'Генерація', icon: '✦' },
-  { href: '/ab', label: 'A/B Тести', icon: '⚗' },
-  { href: '/media', label: 'Медіа', icon: '▣' },
-  { href: '/channels', label: 'Канали', icon: '⛓' },
-  { href: '/emoji', label: 'Преміум емодзі', icon: '★' },
-  { href: '/analytics', label: 'Аналітика', icon: '▤' },
-  { href: '/logs', label: 'Журнал', icon: '☰' },
-  { href: '/monitoring', label: 'Моніторинг', icon: '✚' },
+  { href: '/', label: 'Overview', index: '01' },
+  { href: '/calendar', label: 'Calendar', index: '02' },
+  { href: '/posts', label: 'Posts', index: '03' },
+  { href: '/constructor', label: 'Studio', index: '04' },
+  { href: '/generate', label: 'Generate', index: '05' },
+  { href: '/ab', label: 'A/B', index: '06' },
+  { href: '/media', label: 'Media', index: '07' },
+  { href: '/channels', label: 'Channels', index: '08' },
+  { href: '/emoji', label: 'Emoji', index: '09' },
+  { href: '/analytics', label: 'Analytics', index: '10' },
+  { href: '/logs', label: 'Journal', index: '11' },
+  { href: '/monitoring', label: 'System', index: '12' },
 ]
 
 export function Sidebar() {
@@ -30,77 +30,94 @@ export function Sidebar() {
     router.refresh()
   }
 
-  const content = (
-    <>
-      <div className="px-5 py-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-white font-bold text-lg tracking-tight">🎰 Ivengo</h1>
-          <p className="text-tile-pink text-[10px] font-mono uppercase tracking-[0.2em] mt-1">Авто-постинг</p>
-        </div>
-        <button
-          onClick={() => setOpen(false)}
-          className="lg:hidden text-white/50 hover:text-white text-xl leading-none"
-          aria-label="Закрити меню"
-        >
-          ✕
-        </button>
-      </div>
-      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
-        {nav.map((item) => {
-          const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              className={`group flex items-center gap-3 px-3 py-2 text-xs font-mono uppercase tracking-wider transition-colors ${
-                active
-                  ? 'bg-tile-pink text-tile-coal font-bold'
-                  : 'text-white/55 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <span className={`text-sm leading-none ${active ? 'text-tile-coal' : 'text-tile-pink/70 group-hover:text-tile-pink'}`}>{item.icon}</span>
-              {item.label}
-            </Link>
-          )
-        })}
-      </nav>
-      <div className="px-3 py-4">
-        <button
-          onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2 text-xs font-mono uppercase tracking-wider text-white/40 hover:bg-tile-rose hover:text-white transition-colors"
-        >
-          <span className="text-sm leading-none">⏻</span>Вийти
-        </button>
-      </div>
-    </>
-  )
-
   return (
     <>
-      {/* Mobile top bar */}
-      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between bg-tile-coal px-4 py-3">
-        <h1 className="text-white font-bold text-base tracking-tight">🎰 Ivengo</h1>
-        <button
-          onClick={() => setOpen(true)}
-          className="text-white text-xl leading-none px-2 py-1"
-          aria-label="Відкрити меню"
-        >
-          ☰
-        </button>
-      </div>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-tile-coal focus:px-4 focus:py-3 focus:text-white">
+        До основного вмісту
+      </a>
+      <header className="sticky top-0 z-30 border-b border-tile-coal bg-tile-amber/95 backdrop-blur-sm">
+        <div className="flex min-h-16 items-stretch">
+          <Link href="/" className="flex min-w-[220px] items-center gap-3 border-r border-tile-coal px-4 lg:px-6" aria-label="Ivengo — головна">
+            <span className="flex h-4 w-4 items-center justify-center rounded-full border border-tile-coal">
+              <span className="h-1.5 w-1.5 rounded-full bg-tile-coal" />
+            </span>
+            <span className="font-mono text-xs uppercase tracking-[0.24em]">Ivengo Studio</span>
+          </Link>
 
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-56 min-h-screen bg-tile-coal flex-col flex-shrink-0">
-        {content}
-      </aside>
+          <nav className="hidden min-w-0 flex-1 overflow-x-auto lg:flex" aria-label="Головна навігація">
+            {nav.map((item) => {
+              const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`group flex min-w-[92px] flex-1 flex-col justify-center border-r border-tile-coal px-3 py-2 font-mono uppercase ${
+                    active ? 'bg-tile-coal text-tile-amber' : 'text-tile-coal hover:bg-tile-coal hover:text-tile-amber'
+                  }`}
+                >
+                  <span className="text-[8px] tracking-[0.18em] opacity-50">{item.index}</span>
+                  <span className="mt-1 text-[10px] tracking-[0.13em]">{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
 
-      {/* Mobile drawer */}
+          <button
+            onClick={logout}
+            className="hidden min-w-[82px] items-center justify-center border-l border-tile-coal px-4 font-mono text-[10px] uppercase tracking-[0.16em] hover:bg-tile-coal hover:text-tile-amber xl:flex"
+          >
+            Exit
+          </button>
+
+          <button
+            onClick={() => setOpen(true)}
+            className="ml-auto flex min-h-16 min-w-16 items-center justify-center border-l border-tile-coal font-mono text-xs uppercase tracking-widest lg:hidden"
+            aria-label="Відкрити меню"
+            aria-expanded={open}
+          >
+            Menu
+          </button>
+        </div>
+      </header>
+
       {open && (
-        <div className="lg:hidden fixed inset-0 z-40 flex">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
-          <aside className="relative w-64 max-w-[80vw] min-h-screen bg-tile-coal flex flex-col z-50">
-            {content}
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button className="absolute inset-0 bg-tile-coal/45" onClick={() => setOpen(false)} aria-label="Закрити меню" />
+          <aside className="absolute right-0 top-0 flex h-full w-[min(88vw,420px)] flex-col border-l border-tile-coal bg-tile-amber">
+            <div className="flex min-h-16 items-center justify-between border-b border-tile-coal px-5">
+              <span className="font-mono text-xs uppercase tracking-[0.22em]">Index</span>
+              <button
+                onClick={() => setOpen(false)}
+                className="min-h-11 px-2 font-mono text-xs uppercase tracking-widest"
+                aria-label="Закрити меню"
+              >
+                Close
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto" aria-label="Мобільна навігація">
+              {nav.map((item) => {
+                const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={`flex min-h-14 items-center justify-between border-b border-tile-coal/35 px-5 font-mono uppercase ${
+                      active ? 'bg-tile-coal text-tile-amber' : 'text-tile-coal'
+                    }`}
+                  >
+                    <span className="text-xs tracking-[0.16em]">{item.label}</span>
+                    <span className="text-[9px] tracking-widest opacity-55">{item.index}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+            <button
+              onClick={logout}
+              className="min-h-16 border-t border-tile-coal px-5 text-left font-mono text-xs uppercase tracking-[0.16em] hover:bg-tile-coal hover:text-tile-amber"
+            >
+              Exit session
+            </button>
           </aside>
         </div>
       )}

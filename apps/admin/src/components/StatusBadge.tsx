@@ -1,17 +1,17 @@
 const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
-  draft:            { label: 'Чернетка',     cls: 'bg-tile-amber text-tile-coal' },
-  pending_review:   { label: 'На ревʼю',     cls: 'bg-tile-pink text-tile-coal' },
-  approved:         { label: 'Схвалено',     cls: 'bg-tile-teal text-tile-coal' },
-  scheduled:        { label: 'Заплановано',  cls: 'bg-tile-blue text-white' },
-  published:        { label: 'Опубліковано', cls: 'bg-emerald-500 text-white' },
-  failed:           { label: 'Помилка',      cls: 'bg-tile-rose text-white' },
-  rejected:         { label: 'Відхилено',    cls: 'bg-tile-coal text-white/70' },
+  draft:            { label: 'Чернетка',     cls: 'border-tile-coal/35 text-tile-coal' },
+  pending_review:   { label: 'На ревʼю',     cls: 'border-tile-pink bg-tile-pink/30 text-tile-coal' },
+  approved:         { label: 'Схвалено',     cls: 'border-tile-teal bg-tile-teal/40 text-tile-coal' },
+  scheduled:        { label: 'Заплановано',  cls: 'border-tile-blue text-tile-blue' },
+  published:        { label: 'Опубліковано', cls: 'border-tile-coal bg-tile-coal text-tile-amber' },
+  failed:           { label: 'Помилка',      cls: 'border-tile-rose bg-tile-rose/10 text-tile-rose' },
+  rejected:         { label: 'Відхилено',    cls: 'border-tile-coal/30 text-tile-coal/60' },
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status] ?? { label: status, cls: 'bg-tile-amber text-tile-coal' }
+  const cfg = STATUS_CONFIG[status] ?? { label: status, cls: 'border-tile-coal/35 text-tile-coal' }
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider font-bold ${cfg.cls}`}>
+    <span className={`inline-flex items-center border px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] ${cfg.cls}`}>
       {cfg.label}
     </span>
   )

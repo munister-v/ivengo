@@ -2,36 +2,148 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --epris-paper: #f5f0eb;
+  --epris-paper-deep: #eee6df;
+  --epris-wine: #501a2c;
+  --epris-wine-soft: #7b4053;
+  --epris-line: rgba(80, 26, 44, 0.38);
+  --epris-muted: rgba(80, 26, 44, 0.62);
+  --epris-white: #fffdf9;
+}
+
 @layer base {
+  * {
+    border-color: var(--epris-line);
+  }
+
+  html {
+    background: var(--epris-paper);
+  }
+
   body {
-    /* warm Mondrian canvas — never pure white */
-    background-color: #F5EFE8;
+    background-color: var(--epris-paper);
+    color: var(--epris-wine);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: var(--epris-wine);
+    color: var(--epris-paper);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--epris-wine);
+    outline-offset: 3px;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  button,
+  a {
+    transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, opacity 180ms ease;
+  }
+
+  input,
+  select,
+  textarea {
+    border-radius: 0;
   }
 }
 
 @layer components {
-  /* ── Page chrome ─────────────────────────────────────────── */
-  .page-title { @apply text-2xl font-bold text-tile-coal tracking-tight; }
-  .page-sub   { @apply text-sm text-tile-coal/60; }
-  .eyebrow    { @apply text-xs font-mono uppercase tracking-widest text-tile-coal/50; }
+  .page-title {
+    @apply text-3xl lg:text-5xl font-normal text-tile-coal tracking-tight;
+    line-height: 0.98;
+  }
+  .page-sub { @apply text-base text-tile-coal/60; }
+  .eyebrow { @apply text-[11px] font-mono uppercase tracking-[0.18em] text-tile-coal/55; }
 
-  /* ── Dark coal panel — the default "tile" card ───────────── */
-  .panel       { @apply bg-tile-coal text-white; }
-  .panel-pad   { @apply bg-tile-coal text-white p-6; }
-  .panel-label { @apply text-xs font-mono uppercase tracking-widest text-white/50; }
-
-  /* ── Form controls (live inside coal panels) ─────────────── */
-  .lbl { @apply block text-xs font-mono uppercase tracking-widest text-white/50 mb-1.5; }
-  .fld {
-    @apply w-full bg-white/5 border border-white/15 text-white placeholder:text-white/30
-           px-3 py-2 text-sm transition-colors
-           focus:outline-none focus:border-tile-pink;
-    color-scheme: dark;
+  .panel {
+    @apply bg-[#fffdf9] text-tile-coal border border-tile-coal/35;
+  }
+  .panel-pad {
+    @apply bg-[#fffdf9] text-tile-coal border border-tile-coal/35 p-5 lg:p-6;
+  }
+  .panel-label {
+    @apply text-[10px] font-mono uppercase tracking-[0.2em] text-tile-coal/55;
   }
 
-  /* ── Buttons ─────────────────────────────────────────────── */
-  .btn       { @apply bg-tile-pink hover:bg-tile-teal text-tile-coal font-bold px-4 py-2 text-sm transition-colors disabled:opacity-50; }
-  .btn-coal  { @apply bg-tile-blue hover:bg-tile-pink hover:text-tile-coal text-white font-bold px-4 py-2 text-sm transition-colors disabled:opacity-50; }
-  .btn-line  { @apply border border-white/20 text-white/80 hover:bg-white/10 hover:text-white px-4 py-2 text-sm transition-colors disabled:opacity-50; }
-  .btn-ghost { @apply text-white/50 hover:text-white px-3 py-2 text-sm transition-colors disabled:opacity-50; }
+  .panel .text-white,
+  .panel-pad .text-white {
+    color: var(--epris-wine);
+  }
+  .panel .text-white\/80,
+  .panel-pad .text-white\/80 {
+    color: rgba(80, 26, 44, 0.8);
+  }
+  .panel .text-white\/70,
+  .panel-pad .text-white\/70 {
+    color: rgba(80, 26, 44, 0.7);
+  }
+  .panel .text-white\/60,
+  .panel-pad .text-white\/60 {
+    color: rgba(80, 26, 44, 0.62);
+  }
+  .panel .text-white\/50,
+  .panel-pad .text-white\/50 {
+    color: rgba(80, 26, 44, 0.52);
+  }
+  .panel .text-white\/40,
+  .panel-pad .text-white\/40 {
+    color: rgba(80, 26, 44, 0.45);
+  }
+  .panel .bg-white\/5,
+  .panel-pad .bg-white\/5 {
+    background: rgba(80, 26, 44, 0.045);
+  }
+  .panel .bg-white\/10,
+  .panel-pad .bg-white\/10 {
+    background: rgba(80, 26, 44, 0.08);
+  }
+  .panel .divide-white\/10 > :not([hidden]) ~ :not([hidden]),
+  .panel-pad .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(80, 26, 44, 0.16);
+  }
+
+  .lbl {
+    @apply block text-[10px] font-mono uppercase tracking-[0.18em] text-tile-coal/60 mb-2;
+  }
+  .fld {
+    @apply w-full bg-transparent border border-tile-coal/35 text-tile-coal placeholder:text-tile-coal/35
+           px-3 py-2.5 text-base transition-colors
+           focus:outline-none focus:border-tile-coal;
+    color-scheme: light;
+  }
+
+  .btn {
+    @apply bg-tile-coal hover:bg-brand-600 text-[#fffdf9] font-mono uppercase tracking-[0.12em] px-4 py-2.5 text-xs transition-colors disabled:opacity-50;
+  }
+  .btn-coal {
+    @apply bg-transparent hover:bg-tile-coal hover:text-[#fffdf9] border border-tile-coal text-tile-coal font-mono uppercase tracking-[0.12em] px-4 py-2.5 text-xs transition-colors disabled:opacity-50;
+  }
+  .btn-line {
+    @apply border border-tile-coal/45 text-tile-coal hover:bg-tile-coal hover:text-[#fffdf9] px-4 py-2.5 text-xs font-mono uppercase tracking-[0.12em] transition-colors disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply text-tile-coal/60 hover:text-tile-coal px-3 py-2 text-xs font-mono uppercase tracking-[0.12em] transition-colors disabled:opacity-50;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
