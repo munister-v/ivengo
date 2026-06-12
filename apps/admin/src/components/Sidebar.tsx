@@ -1,8 +1,9 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { removeToken } from '@/lib/auth'
+import { api, type StatsData } from '@/lib/api'
 
 const nav = [
   { href: '/', label: 'Overview', index: '01' },
@@ -23,6 +24,26 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [stats, setStats] = useState<StatsData | null>(null)
+
+  useEffect(() => {
+    let active = true
+    const loadStats = () => api.getStats().then((value) => {
+      if (active) setStats(value)
+    }).catch(() => {})
+    loadStats()
+    const interval = setInterval(loadStats, 60000)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [pathname])
+
+  function badgeFor(href: string): number {
+    if (href === '/posts') return stats?.byStatus.pending_review ?? 0
+    if (href === '/monitoring') return stats?.failedToday ?? 0
+    return 0
+  }
 
   function logout() {
     removeToken()
@@ -47,6 +68,7 @@ export function Sidebar() {
           <nav className="hidden min-w-0 flex-1 overflow-x-auto lg:flex" aria-label="Головна навігація">
             {nav.map((item) => {
               const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+              const badge = badgeFor(item.href)
               return (
                 <Link
                   key={item.href}
@@ -56,7 +78,16 @@ export function Sidebar() {
                   }`}
                 >
                   <span className="text-[8px] tracking-[0.18em] opacity-50">{item.index}</span>
-                  <span className="mt-1 text-[10px] tracking-[0.13em]">{item.label}</span>
+                  <span className="mt-1 flex items-center justify-between gap-2 text-[10px] tracking-[0.13em]">
+                    {item.label}
+                    {badge > 0 && (
+                      <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[8px] ${
+                        active ? 'bg-tile-amber text-tile-coal' : 'bg-tile-coal text-tile-amber group-hover:bg-tile-amber group-hover:text-tile-coal'
+                      }`}>
+                        {badge > 99 ? '99+' : badge}
+                      </span>
+                    )}
+                  </span>
                 </Link>
               )
             })}
@@ -97,6 +128,7 @@ export function Sidebar() {
             <nav className="flex-1 overflow-y-auto" aria-label="Мобільна навігація">
               {nav.map((item) => {
                 const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+                const badge = badgeFor(item.href)
                 return (
                   <Link
                     key={item.href}
@@ -106,7 +138,10 @@ export function Sidebar() {
                       active ? 'bg-tile-coal text-tile-amber' : 'text-tile-coal'
                     }`}
                   >
-                    <span className="text-xs tracking-[0.16em]">{item.label}</span>
+                    <span className="flex items-center gap-2 text-xs tracking-[0.16em]">
+                      {item.label}
+                      {badge > 0 && <span className="rounded-full border border-current px-1.5 py-0.5 text-[8px]">{badge > 99 ? '99+' : badge}</span>}
+                    </span>
                     <span className="text-[9px] tracking-widest opacity-55">{item.index}</span>
                   </Link>
                 )

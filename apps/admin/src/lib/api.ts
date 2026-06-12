@@ -53,6 +53,11 @@ export const api = {
     Object.entries(params).forEach(([k, v]) => v && qs.set(k, String(v)))
     return request<PostsResponse>(`/api/posts?${qs}`)
   },
+  bulkUpdatePostStatus: (ids: string[], status: 'draft' | 'pending_review' | 'rejected') =>
+    request<{ updated: number; requested: number }>('/api/posts/bulk-status', {
+      method: 'PATCH',
+      body: JSON.stringify({ ids, status }),
+    }),
   getPost: (id: string) => request<Post>(`/api/posts/${id}`),
   getCalendar: (from: string, to: string) =>
     request<{ posts: CalendarPost[] }>(`/api/posts/calendar?from=${from}&to=${to}`),

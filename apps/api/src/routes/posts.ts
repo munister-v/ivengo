@@ -47,6 +47,11 @@ const rewriteSchema = z.object({
   language: z.enum(['uk', 'ru']).default('uk'),
 })
 
+const bulkStatusSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(100),
+  status: z.enum(['draft', 'pending_review', 'rejected']),
+})
+
 export async function postsRoutes(app: FastifyInstance) {
   app.addHook('onRequest', authenticate)
 
@@ -63,6 +68,21 @@ export async function postsRoutes(app: FastifyInstance) {
       app.log.error({ err: e }, 'AI rewrite failed')
       return reply.status(502).send({ error: e instanceof Error ? e.message : 'AI rewrite failed' })
     }
+  })
+
+  // PATCH /api/posts/bulk-status — safe bulk workflow transitions.
+  // Approval and publishing stay intentionally single-post operations because
+  // each item must pass compliance and may target different channels.
+  app.patch('/bulk-status', async (req) => {
+    const body = bulkStatusSchema.parse(req.body)
+    const result = await prisma.post.updateMany({
+      where: {
+        id: { in: body.ids },
+        status: { notIn: ['published'] },
+      },
+      data: { status: body.status },
+    })
+    return { updated: result.count, requested: body.ids.length }
   })
 
   // GET /api/posts
