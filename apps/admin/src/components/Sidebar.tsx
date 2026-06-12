@@ -6,10 +6,10 @@ import { removeToken } from '@/lib/auth'
 
 const nav = [
   { href: '/', label: 'Overview', index: '01' },
-  { href: '/calendar', label: 'Calendar', index: '02' },
-  { href: '/posts', label: 'Posts', index: '03' },
-  { href: '/constructor', label: 'Studio', index: '04' },
-  { href: '/generate', label: 'Generate', index: '05' },
+  { href: '/constructor', label: 'Studio', index: '02' },
+  { href: '/generate', label: 'Generate', index: '03' },
+  { href: '/calendar', label: 'Calendar', index: '04' },
+  { href: '/posts', label: 'Posts', index: '05' },
   { href: '/ab', label: 'A/B', index: '06' },
   { href: '/media', label: 'Media', index: '07' },
   { href: '/channels', label: 'Channels', index: '08' },

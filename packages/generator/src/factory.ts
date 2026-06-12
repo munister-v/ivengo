@@ -1,16 +1,34 @@
 import { AnthropicAdapter } from './anthropic-adapter'
 import { OpenAICompatibleAdapter } from './openai-compatible-adapter'
-import type { GenerationRequest, GeneratedPost } from './types'
+import type { GenerationRequest, GeneratedPost, RewriteRequest } from './types'
 
 export interface ContentAdapter {
   generate(req: GenerationRequest): Promise<GeneratedPost[]>
+  /** One-shot transform of an existing post (improve, shorten, translate, …). */
+  rewrite(req: RewriteRequest): Promise<string>
 }
 
+// Free OpenRouter models, tried in order until one responds. The list is kept
+// long deliberately — free-tier models get rate-limited or pulled often, so
+// having many fallbacks keeps the auto-switcher working without manual fixes.
+// Free OpenRouter models, tried in order until one responds. Verified against
+// the live https://openrouter.ai/api/v1/models list (only ":free" text models).
+// The list is kept long deliberately — free-tier models get rate-limited,
+// pulled, or moved to paid often, so the auto-switcher (in
+// OpenAICompatibleAdapter) needs many fallbacks. A dead/paywalled/rate-limited
+// model just gets skipped (any 4xx/5xx or empty reply → next one).
 const FREE_OPENROUTER_FALLBACKS = [
   'meta-llama/llama-3.3-70b-instruct:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
   'qwen/qwen3-next-80b-a3b-instruct:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'openai/gpt-oss-120b:free',
   'nousresearch/hermes-3-llama-3.1-405b:free',
+  'google/gemma-4-31b-it:free',
+  'openai/gpt-oss-20b:free',
+  'nvidia/nemotron-3-nano-30b-a3b:free',
+  'cognitivecomputations/dolphin-mistral-24b-venice-edition:free',
+  'nvidia/nemotron-nano-9b-v2:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
   'liquid/lfm-2.5-1.2b-instruct:free',
 ]
 

@@ -1,8 +1,31 @@
-import type { GenerationRequest } from './types'
+import type { GenerationRequest, RewriteRequest } from './types'
 
 const LANG_LABELS: Record<string, string> = {
   uk: 'Ukrainian (Українська)',
   ru: 'Russian (Русский)',
+}
+
+/**
+ * Prompt for a one-shot text transform on an existing post. Unlike buildPrompt
+ * (which asks for a JSON array), this asks the model to return ONLY the
+ * resulting post text, so it works with the rewrite/improve toolbar.
+ */
+export function buildRewritePrompt(req: RewriteRequest) {
+  const langLabel = LANG_LABELS[req.language] ?? 'Ukrainian (Українська)'
+  const system =
+    `You are an expert SMM copywriter for the Telegram channel of the online casino "Ivengo".` +
+    ` You edit and polish ready-to-publish Telegram posts.\n` +
+    `Hard rules:\n` +
+    `- Write in ${langLabel}, unless the task explicitly asks to translate.\n` +
+    `- Keep Telegram Markdown: *bold*, _italic_, \`code\`, and emoji. Never output HTML tags.\n` +
+    `- Keep the tone punchy, vivid and on-brand for an online casino / slots channel.\n` +
+    `- Preserve any links/CTAs already in the text unless the task says otherwise.\n` +
+    `- Output ONLY the final post text. No explanations, no preamble, no surrounding quotes, no code fences.`
+  const user =
+    `Current Telegram post:\n"""\n${req.text}\n"""\n\n` +
+    `Task: ${req.instruction}\n\n` +
+    `Return only the resulting post text.`
+  return { system, user }
 }
 
 const UA_CITIES = [

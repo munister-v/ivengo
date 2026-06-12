@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { ChannelPicker } from '@/components/ChannelPicker'
 import { PremiumEmojiBar } from '@/components/PremiumEmojiBar'
 import { ImageGenerator } from '@/components/ImageGenerator'
+import { AiTextTools } from '@/components/AiTextTools'
 
 const TYPE_LABELS: Record<string, string> = {
   short_post: 'Короткий пост', article: 'Стаття', poll: 'Опитування',
@@ -38,7 +39,9 @@ export default function PostDetailPage() {
   const [complianceFlags, setComplianceFlags] = useState<ComplianceFlag[]>([])
 
   useEffect(() => {
-    if (!id || id === 'new') { setLoading(false); return }
+    // /posts/new is not a real post — the create flow lives in the Constructor.
+    if (id === 'new') { router.replace('/constructor'); return }
+    if (!id) { setLoading(false); return }
     api.getPost(id).then((p) => {
       setPost(p)
       setContent(p.content)
@@ -47,7 +50,7 @@ export default function PostDetailPage() {
       setChannelIds(p.channelIds ?? [])
       setComplianceFlags(p.complianceChecks?.[0]?.flags ?? [])
     }).finally(() => setLoading(false))
-  }, [id])
+  }, [id, router])
 
   function notify(text: string, type: 'success' | 'error' = 'success') {
     setMessage({ text, type })
@@ -98,6 +101,10 @@ export default function PostDetailPage() {
   if (loading) return <div className="eyebrow animate-pulse">Завантаження…</div>
   if (!post) return <div className="eyebrow">Пост не знайдено</div>
 
+  // Telegram limits: 1024 chars for a photo caption, 4096 for a plain text message.
+  const tgLimit = imageUrl ? 1024 : 4096
+  const tgLimitExceeded = content.length > tgLimit
+
   const canApprove = ['draft', 'pending_review', 'rejected'].includes(post.status)
   const canReject = ['pending_review', 'approved'].includes(post.status)
   const canPublish = ['approved', 'scheduled'].includes(post.status)
@@ -135,8 +142,23 @@ export default function PostDetailPage() {
         <div>
           <label className="lbl">Текст посту (Telegram Markdown)</label>
           <textarea ref={contentRef} value={content} onChange={(e) => setContent(e.target.value)} rows={12} className="fld font-mono resize-y" />
-          <p className="text-xs text-white/40 mt-1 font-mono">{content.length} символів</p>
+          <div className="flex items-center justify-between gap-2 mt-1 flex-wrap">
+            <p className={`text-xs font-mono ${tgLimitExceeded ? 'text-tile-rose font-bold' : 'text-white/40'}`}>
+              {content.length} / {tgLimit} символів
+              {tgLimitExceeded && ` — перевищено ліміт Telegram${imageUrl ? ' для підпису до фото (1024)' : ' (4096)'}!`}
+            </p>
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard?.writeText(content); notify('Скопійовано') }}
+              className="text-xs text-white/50 hover:text-white font-mono uppercase tracking-wider"
+            >
+              📋 Копіювати
+            </button>
+          </div>
           <PremiumEmojiBar textareaRef={contentRef} setContent={setContent} />
+          <div className="mt-2">
+            <AiTextTools text={content} language={post.language as 'uk' | 'ru'} onResult={setContent} notify={notify} />
+          </div>
         </div>
 
         <div className="space-y-2">

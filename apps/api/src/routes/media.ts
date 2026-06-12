@@ -17,6 +17,8 @@ const generateImageSchema = z.object({
   prompt: z.string().min(2, 'Опишіть, що згенерувати'),
   width: z.number().int().min(192).max(1024).optional(),
   height: z.number().int().min(192).max(1024).optional(),
+  negativePrompt: z.string().max(500).optional(),
+  model: z.string().max(100).optional(),
 })
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? '/app/uploads'

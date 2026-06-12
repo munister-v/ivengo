@@ -16,6 +16,10 @@ export interface ImageGenOptions {
   height?: number
   /** Diffusion steps (default 20). */
   steps?: number
+  /** Things to avoid in the image (e.g. "text, watermark, blurry, extra fingers"). */
+  negativePrompt?: string
+  /** AI Horde model/checkpoint name (e.g. "AlbedoBase XL (SDXL)", "Anything Diffusion"). Defaults to the cluster's pick. */
+  model?: string
   /** Max time to wait for the job to finish, in ms (default 150000). */
   timeoutMs?: number
   /** Poll interval, in ms (default 4000). */
@@ -48,11 +52,12 @@ interface HordeStatusResponse {
 
 /** Submits a generation job to the AI Horde. Returns the job id. */
 export async function submitImageJob(prompt: string, opts: ImageGenOptions = {}): Promise<string> {
+  const fullPrompt = opts.negativePrompt ? `${prompt} ### ${opts.negativePrompt}` : prompt
   const res = await fetch(`${HORDE_BASE}/generate/async`, {
     method: 'POST',
     headers: { apikey: HORDE_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      prompt,
+      prompt: fullPrompt,
       params: {
         width: clampDim(opts.width ?? 512),
         height: clampDim(opts.height ?? 512),
@@ -61,6 +66,7 @@ export async function submitImageJob(prompt: string, opts: ImageGenOptions = {})
         cfg_scale: 7,
         n: 1,
       },
+      ...(opts.model ? { models: [opts.model] } : {}),
       r2: true,
       nsfw: false,
     }),
